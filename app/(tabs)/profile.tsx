@@ -1,0 +1,283 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useMemo } from 'react';
+import {
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
+import { Muted, Screen } from '@/components/ui';
+import {
+  useAllWatchedEpisodes,
+  useMovies,
+  useProfile,
+  useTrackedShows,
+} from '@/hooks/queries';
+import { usePersistedState } from '@/hooks/usePersistedState';
+import {
+  clearEpisodeNotifications,
+  ensureNotificationPermission,
+  notificationsAvailable,
+} from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
+import { imageUrl } from '@/lib/tmdb';
+import { colors } from '@/lib/theme';
+import { useAuth } from '@/providers/AuthProvider';
+
+const EPISODE_MINUTES = 42;
+const MOVIE_MINUTES = 110;
+
+function Stat({ value, label }: { value: string | number; label: string }) {
+  return (
+    <View className="flex-1 bg-surface rounded-2xl p-4 items-center gap-1">
+      <Text className="text-accent text-[24px] font-extrabold">{value}</Text>
+      <Text className="text-muted text-xs text-center">{label}</Text>
+    </View>
+  );
+}
+
+function formatDuration(minutes: number): string {
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.round((minutes % 1440) / 60);
+  if (days > 0) return `${days} j ${hours} h`;
+  return `${hours} h`;
+}
+
+function SettingRow({
+  icon,
+  label,
+  danger,
+  right,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  danger?: boolean;
+  right?: React.ReactNode;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      className="flex-row items-center gap-3 bg-surface rounded-2xl px-4 py-3.5"
+      style={({ pressed }) => (pressed ? { opacity: 0.8 } : undefined)}
+    >
+      <Ionicons
+        name={icon}
+        size={20}
+        color={danger ? colors.danger : colors.accent}
+      />
+      <Text
+        className={`flex-1 text-[15px] font-semibold ${
+          danger ? 'text-danger' : 'text-fg'
+        }`}
+      >
+        {label}
+      </Text>
+      {right ??
+        (onPress ? (
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        ) : null)}
+    </Pressable>
+  );
+}
+
+export default function ProfileScreen() {
+  const router = useRouter();
+  const { session } = useAuth();
+  const profile = useProfile();
+  const shows = useTrackedShows();
+  const watched = useAllWatchedEpisodes();
+  const movies = useMovies();
+  const [notifEnabled, setNotifEnabled] = usePersistedState(
+    'notifications',
+    false
+  );
+
+  const stats = useMemo(() => {
+    const showList = shows.data ?? [];
+    const episodes = watched.data ?? [];
+    const movieList = movies.data ?? [];
+    const moviesWatched = movieList.filter(
+      (movie) => movie.status === 'watched'
+    ).length;
+
+    const year = String(new Date().getFullYear());
+    const episodesThisYear = episodes.filter((episode) =>
+      episode.watched_at.startsWith(year)
+    ).length;
+
+    const countByShow = new Map<number, number>();
+    for (const episode of episodes) {
+      countByShow.set(
+        episode.tmdb_show_id,
+        (countByShow.get(episode.tmdb_show_id) ?? 0) + 1
+      );
+    }
+    const showById = new Map(showList.map((show) => [show.tmdb_id, show]));
+    const topShows = [...countByShow.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tmdbId, count]) => ({
+        show: showById.get(tmdbId),
+        tmdbId,
+        count,
+      }))
+      .filter((entry) => entry.show);
+
+    return {
+      shows: showList.length,
+      completed: showList.filter((show) => show.status === 'completed').length,
+      episodes: episodes.length,
+      moviesWatched,
+      episodesThisYear,
+      totalMinutes:
+        episodes.length * EPISODE_MINUTES + moviesWatched * MOVIE_MINUTES,
+      topShows,
+    };
+  }, [shows.data, watched.data, movies.data]);
+
+  const email = session?.user.email ?? '';
+  const displayName = profile.data?.username || email.split('@')[0];
+  const initial = (displayName[0] ?? '?').toUpperCase();
+
+  const toggleNotifications = async (value: boolean) => {
+    if (value) {
+      if (!notificationsAvailable) {
+        Alert.alert(
+          'Indisponible dans Expo Go',
+          "Les notifications nécessitent l'app installée (APK). Elles s'activeront automatiquement dans le build EAS."
+        );
+        return;
+      }
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        Alert.alert(
+          'Notifications refusées',
+          'Autorise les notifications pour Spoiler dans les réglages Android.'
+        );
+        return;
+      }
+      setNotifEnabled(true);
+    } else {
+      setNotifEnabled(false);
+      clearEpisodeNotifications().catch(() => {});
+    }
+  };
+
+  return (
+    <Screen>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }}>
+        {/* Identité */}
+        <View className="items-center gap-2 pt-2">
+          <View className="w-20 h-20 rounded-full bg-accent items-center justify-center">
+            <Text className="text-accent-fg text-3xl font-extrabold">
+              {initial}
+            </Text>
+          </View>
+          <Text className="text-fg text-xl font-extrabold">{displayName}</Text>
+          <Text className="text-muted text-[13px]">{email}</Text>
+        </View>
+
+        {/* Statistiques */}
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <Stat value={stats.shows} label="Séries" />
+            <Stat value={stats.episodes} label="Épisodes vus" />
+            <Stat value={stats.moviesWatched} label="Films vus" />
+          </View>
+          <View className="flex-row gap-3">
+            <Stat
+              value={`≈ ${formatDuration(stats.totalMinutes)}`}
+              label="Devant l'écran"
+            />
+            <Stat value={stats.episodesThisYear} label="Épisodes cette année" />
+            <Stat value={stats.completed} label="Séries terminées" />
+          </View>
+        </View>
+
+        {/* Top séries */}
+        {stats.topShows.length ? (
+          <View className="gap-2">
+            <Text className="text-fg text-lg font-bold">Top séries</Text>
+            {stats.topShows.map((entry, index) => {
+              const uri = imageUrl(entry.show?.poster_path, 'w92');
+              return (
+                <Pressable
+                  key={entry.tmdbId}
+                  onPress={() => router.push(`/show/${entry.tmdbId}`)}
+                  className="flex-row items-center gap-3 bg-surface rounded-xl p-2"
+                  style={({ pressed }) =>
+                    pressed ? { opacity: 0.8 } : undefined
+                  }
+                >
+                  <Text className="text-accent text-base font-extrabold w-6 text-center">
+                    {index + 1}
+                  </Text>
+                  {uri ? (
+                    <Image
+                      source={{ uri }}
+                      className="w-8 aspect-[2/3] rounded"
+                    />
+                  ) : (
+                    <View className="w-8 aspect-[2/3] rounded bg-surface-light" />
+                  )}
+                  <Text
+                    className="text-fg text-sm font-semibold flex-1"
+                    numberOfLines={1}
+                  >
+                    {entry.show?.name}
+                  </Text>
+                  <Text className="text-muted text-xs">{entry.count} ép.</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {/* Réglages */}
+        <View className="gap-2">
+          <Text className="text-fg text-lg font-bold">Réglages</Text>
+          <SettingRow
+            icon="notifications"
+            label="Notifications de diffusion"
+            right={
+              <Switch
+                value={notifEnabled}
+                onValueChange={toggleNotifications}
+                trackColor={{ false: colors.surfaceLight, true: colors.accent }}
+                thumbColor={colors.text}
+              />
+            }
+          />
+          <SettingRow
+            icon="time"
+            label="Historique de visionnage"
+            onPress={() => router.push('/history')}
+          />
+          <SettingRow
+            icon="download"
+            label="Importer mon historique TV Time"
+            onPress={() => router.push('/import')}
+          />
+          <SettingRow
+            icon="log-out"
+            label="Se déconnecter"
+            danger
+            onPress={() => supabase.auth.signOut()}
+          />
+        </View>
+
+        <Muted>
+          Temps d'écran estimé (42 min/épisode, 1 h 50/film). Données TMDB —
+          application non approuvée par TMDB.
+        </Muted>
+      </ScrollView>
+    </Screen>
+  );
+}

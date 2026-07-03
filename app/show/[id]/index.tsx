@@ -1,0 +1,526 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+import { useActionSheet } from '@/components/ActionSheet';
+import { Carousel } from '@/components/Carousel';
+import { CastRow } from '@/components/CastRow';
+import { EpisodeCard } from '@/components/EpisodeCard';
+import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
+import { PosterCard } from '@/components/PosterCard';
+import { RatingStars } from '@/components/RatingStars';
+import { DetailSkeleton } from '@/components/Skeleton';
+import { WhereToWatch } from '@/components/WhereToWatch';
+import { Button, ProgressBar, Screen } from '@/components/ui';
+import {
+  useAllWatchedEpisodes,
+  useMarkEpisode,
+  useMarkEpisodesBulk,
+  useSeasonDetails,
+  useSetShowRating,
+  useSetShowStatus,
+  useShowDetails,
+  useShowRecommendations,
+  useTrackShow,
+  useTrackedShows,
+  useUntrackShow,
+} from '@/hooks/queries';
+import { useAutoShowStatus } from '@/hooks/useAutoShowStatus';
+import type { ShowStatus } from '@/lib/db';
+import {
+  episodeKey,
+  isUpToDate,
+  nextEpisode,
+  totalEpisodes,
+  unwatchedUpTo,
+  watchedCount,
+  watchedSetForShow,
+} from '@/lib/progress';
+import { findTrailer, imageUrl, type TmdbEpisode } from '@/lib/tmdb';
+import { colors } from '@/lib/theme';
+
+const STATUS_META: Record<ShowStatus, { label: string; bg: string; text: string }> = {
+  watching: { label: 'En cours', bg: 'bg-accent/15', text: 'text-accent' },
+  planned: { label: 'À commencer', bg: 'bg-surface-light', text: 'text-muted' },
+  completed: { label: 'Terminée ✓', bg: 'bg-success/15', text: 'text-success' },
+  stopped: { label: 'Ne regarde plus', bg: 'bg-danger/15', text: 'text-danger' },
+};
+
+type Tab = 'about' | 'episodes';
+
+export default function ShowDetailScreen() {
+  const params = useLocalSearchParams<{ id: string; tab?: string }>();
+  const showId = Number(params.id);
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>(
+    params.tab === 'episodes' ? 'episodes' : 'about'
+  );
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const { show: openSheet, sheet } = useActionSheet();
+
+  const details = useShowDetails(showId);
+  const tracked = useTrackedShows();
+  const watchedRows = useAllWatchedEpisodes();
+  const trackShow = useTrackShow();
+  const untrackShow = useUntrackShow();
+  const setStatus = useSetShowStatus();
+  const setRating = useSetShowRating();
+  const markEpisode = useMarkEpisode();
+  const markBulk = useMarkEpisodesBulk();
+  const recommendations = useShowRecommendations(showId);
+
+  const trackedShow = (tracked.data ?? []).find(
+    (show) => show.tmdb_id === showId
+  );
+  const watched = useMemo(
+    () => watchedSetForShow(watchedRows.data ?? [], showId),
+    [watchedRows.data, showId]
+  );
+  useAutoShowStatus(trackedShow, details.data, watched);
+
+  const seasons = useMemo(
+    () =>
+      (details.data?.seasons ?? [])
+        .filter((season) => season.episode_count > 0)
+        .sort((a, b) => {
+          if (a.season_number === 0) return 1;
+          if (b.season_number === 0) return -1;
+          return a.season_number - b.season_number;
+        }),
+    [details.data]
+  );
+  const next = useMemo(
+    () => (details.data ? nextEpisode(details.data.seasons, watched) : null),
+    [details.data, watched]
+  );
+  // Saison affichée : celle choisie, sinon celle du prochain épisode à voir.
+  const activeSeason =
+    selectedSeason ?? next?.season ?? seasons[0]?.season_number ?? null;
+  const seasonDetails = useSeasonDetails(
+    showId,
+    tab === 'episodes' ? activeSeason : null
+  );
+
+  // Recommandations : ne pas re-proposer ce qu'on suit déjà.
+  const trackedIds = useMemo(
+    () => new Set((tracked.data ?? []).map((show) => show.tmdb_id)),
+    [tracked.data]
+  );
+  const filteredRecs = (recommendations.data?.results ?? [])
+    .filter((item) => !trackedIds.has(item.id))
+    .slice(0, 12);
+
+  if (details.isLoading || tracked.isLoading) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <FloatingHeader />
+        <DetailSkeleton />
+      </Screen>
+    );
+  }
+  if (!details.data) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <FloatingHeader />
+        <Text className="text-muted p-4 text-center mt-24">
+          Série introuvable.
+        </Text>
+      </Screen>
+    );
+  }
+
+  const show = details.data;
+  const total = totalEpisodes(show.seasons);
+  const seen = watchedCount(watched);
+  const backdrop = imageUrl(show.backdrop_path, 'w780');
+  const poster = imageUrl(show.poster_path, 'w342');
+
+  // « En cours » mais tout vu → « À jour » (le statut en base reste watching).
+  const statusMeta = trackedShow
+    ? trackedShow.status === 'watching' &&
+      isUpToDate(show.seasons, watched, show.last_episode_to_air ?? null)
+      ? { label: 'À jour ✓', bg: 'bg-success/15', text: 'text-success' }
+      : STATUS_META[trackedShow.status]
+    : null;
+
+  const follow = () =>
+    trackShow.mutate({
+      tmdb_id: show.id,
+      name: show.name,
+      poster_path: show.poster_path,
+      backdrop_path: show.backdrop_path,
+    });
+  const unfollow = () =>
+    openSheet({
+      title: 'Ne plus suivre',
+      message: 'La série et tous tes épisodes vus seront supprimés.',
+      actions: [
+        {
+          label: 'Supprimer',
+          variant: 'danger',
+          onPress: () => untrackShow.mutate(showId),
+        },
+      ],
+    });
+
+  const openOptions = () =>
+    openSheet({
+      title: show.name,
+      actions: [
+        {
+          label:
+            trackedShow?.status === 'stopped'
+              ? 'Reprendre la série'
+              : 'Ne plus regarder (mettre de côté)',
+          onPress: () =>
+            setStatus.mutate({
+              tmdbId: showId,
+              status:
+                trackedShow?.status === 'stopped' ? 'watching' : 'stopped',
+            }),
+        },
+        {
+          label: 'Ne plus suivre (tout supprimer)',
+          variant: 'danger',
+          onPress: unfollow,
+        },
+      ],
+    });
+
+  const toggleEpisode = (episode: TmdbEpisode, isWatched: boolean) => {
+    const markSingle = (value: boolean) =>
+      markEpisode.mutate({
+        showId,
+        season: episode.season_number,
+        episode: episode.episode_number,
+        watched: value,
+      });
+    if (isWatched) {
+      markSingle(false);
+      return;
+    }
+    // Marquage rétroactif : proposer les épisodes précédents non vus.
+    const previous = unwatchedUpTo(show.seasons, watched, {
+      season: episode.season_number,
+      episode: episode.episode_number,
+    }).filter(
+      (pair) =>
+        !(
+          pair.season_number === episode.season_number &&
+          pair.episode_number === episode.episode_number
+        )
+    );
+    if (!previous.length) {
+      markSingle(true);
+      return;
+    }
+    openSheet({
+      title: 'Épisodes précédents',
+      message: `${previous.length} épisode${previous.length > 1 ? 's' : ''} avant celui-ci ${
+        previous.length > 1 ? 'ne sont pas marqués' : "n'est pas marqué"
+      } comme vu${previous.length > 1 ? 's' : ''}.`,
+      actions: [
+        {
+          label: `Tout marquer (${previous.length + 1})`,
+          variant: 'primary',
+          onPress: () =>
+            markBulk.mutate(
+              [
+                ...previous,
+                {
+                  season_number: episode.season_number,
+                  episode_number: episode.episode_number,
+                },
+              ].map((pair) => ({
+                tmdb_show_id: showId,
+                season_number: pair.season_number,
+                episode_number: pair.episode_number,
+              }))
+            ),
+        },
+        { label: 'Celui-ci seulement', onPress: () => markSingle(true) },
+      ],
+    });
+  };
+
+  const activeSeasonSummary = seasons.find(
+    (season) => season.season_number === activeSeason
+  );
+  const episodes = seasonDetails.data?.episodes ?? [];
+  const seenInActiveSeason = episodes.filter((episode) =>
+    watched.has(episodeKey(episode.season_number, episode.episode_number))
+  ).length;
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      {sheet}
+      <FloatingHeader
+        right={
+          <>
+            {trackedShow ? (
+              <FloatingButton icon="ellipsis-horizontal" onPress={openOptions} />
+            ) : null}
+            <FloatingButton
+              icon={trackedShow ? 'bookmark' : 'bookmark-outline'}
+              active={!!trackedShow}
+              onPress={trackedShow ? unfollow : follow}
+            />
+          </>
+        }
+      />
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="aspect-video bg-surface">
+          {backdrop ? (
+            <Image source={{ uri: backdrop }} className="w-full h-full" />
+          ) : null}
+          <LinearGradient
+            colors={['transparent', colors.bg]}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 90,
+            }}
+          />
+          {(() => {
+            const trailer = findTrailer(show.videos);
+            return trailer ? (
+              <Pressable
+                onPress={() =>
+                  Linking.openURL(
+                    `https://www.youtube.com/watch?v=${trailer.key}`
+                  )
+                }
+                className="absolute inset-0 items-center justify-center"
+              >
+                <View className="w-14 h-14 rounded-full bg-bg/70 border border-fg/30 items-center justify-center pl-1">
+                  <Ionicons name="play" size={26} color={colors.text} />
+                </View>
+              </Pressable>
+            ) : null;
+          })()}
+        </View>
+
+        <View className="flex-row px-4 -mt-12 gap-3 items-end">
+          {poster ? (
+            <Image
+              source={{ uri: poster }}
+              className="w-24 aspect-[2/3] rounded-xl border-2 border-line"
+            />
+          ) : null}
+          <View className="flex-1 pb-1 gap-1">
+            <Text className="text-fg text-2xl font-extrabold">{show.name}</Text>
+            <Text className="text-muted text-[13px]">
+              {show.first_air_date?.slice(0, 4)}
+              {show.genres.length
+                ? ` · ${show.genres
+                    .slice(0, 3)
+                    .map((genre) => genre.name)
+                    .join(', ')}`
+                : ''}
+            </Text>
+            <View className="flex-row items-center gap-2">
+              {show.vote_average ? (
+                <Text className="text-accent text-[13px] font-bold">
+                  ★ {show.vote_average.toFixed(1)}
+                </Text>
+              ) : null}
+              {statusMeta ? (
+                <View className={`px-2.5 py-1 rounded-full ${statusMeta.bg}`}>
+                  <Text className={`text-[11px] font-bold ${statusMeta.text}`}>
+                    {statusMeta.label}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </View>
+
+        <View className="p-4 gap-4">
+          {!trackedShow ? (
+            <Button
+              title="+ Suivre cette série"
+              loading={trackShow.isPending}
+              onPress={follow}
+            />
+          ) : null}
+
+          <View className="flex-row bg-surface rounded-lg p-[3px]">
+            {(
+              [
+                ['about', 'À propos'],
+                ['episodes', 'Épisodes'],
+              ] as [Tab, string][]
+            ).map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => setTab(value)}
+                className={`flex-1 py-2 rounded-md items-center ${
+                  tab === value ? 'bg-accent' : ''
+                }`}
+              >
+                <Text
+                  className={`font-bold text-sm ${
+                    tab === value ? 'text-accent-fg' : 'text-muted'
+                  }`}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {tab === 'about' ? (
+          <View className="gap-6 pb-4">
+            {show.overview ? (
+              <Text className="text-fg text-sm leading-[21px] opacity-90 px-4">
+                {show.overview}
+              </Text>
+            ) : null}
+            {trackedShow ? (
+              <View className="px-4">
+                <RatingStars
+                  value={trackedShow.rating}
+                  onChange={(rating) =>
+                    setRating.mutate({ tmdbId: showId, rating })
+                  }
+                />
+              </View>
+            ) : null}
+            <WhereToWatch providers={show['watch/providers']?.results?.FR} />
+            {show.credits?.cast?.length ? (
+              <CastRow cast={show.credits.cast} />
+            ) : null}
+            {filteredRecs.length ? (
+              <Carousel
+                title="Dans le même genre"
+                data={filteredRecs}
+                render={(item) => (
+                  <PosterCard
+                    title={item.name}
+                    posterPath={item.poster_path}
+                    subtitle={item.first_air_date?.slice(0, 4)}
+                    width={110}
+                    onPress={() => router.push(`/show/${item.id}`)}
+                  />
+                )}
+              />
+            ) : null}
+          </View>
+        ) : (
+          <View className="gap-4 pb-4">
+            <View className="px-4 gap-1.5">
+              <Text className="text-muted text-[13px]">
+                {seen} / {total} épisodes vus
+              </Text>
+              <ProgressBar progress={total > 0 ? seen / total : 0} />
+            </View>
+
+            {/* Sélecteur de saison — la saison en cours est présélectionnée. */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+            >
+              {seasons.map((season) => {
+                let seenInSeason = 0;
+                for (let e = 1; e <= season.episode_count; e++) {
+                  if (watched.has(episodeKey(season.season_number, e)))
+                    seenInSeason++;
+                }
+                const complete = seenInSeason >= season.episode_count;
+                const active = season.season_number === activeSeason;
+                return (
+                  <Pressable
+                    key={season.id}
+                    onPress={() => setSelectedSeason(season.season_number)}
+                    className={`px-3.5 py-2 rounded-full flex-row items-center gap-1.5 ${
+                      active ? 'bg-accent' : 'bg-surface'
+                    }`}
+                  >
+                    <Text
+                      className={`text-[13px] font-bold ${
+                        active ? 'text-accent-fg' : 'text-muted'
+                      }`}
+                    >
+                      {season.season_number === 0
+                        ? 'Spéciaux'
+                        : `Saison ${season.season_number}`}
+                    </Text>
+                    {complete ? (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={14}
+                        color={active ? colors.accentText : colors.success}
+                      />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {seasonDetails.isLoading ? (
+              <Text className="text-muted p-4 text-center">Chargement…</Text>
+            ) : (
+              <View className="px-4 gap-3">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-muted text-[13px]">
+                    {seenInActiveSeason} / {episodes.length} vus
+                    {activeSeasonSummary?.air_date
+                      ? ` · ${activeSeasonSummary.air_date.slice(0, 4)}`
+                      : ''}
+                  </Text>
+                  {seenInActiveSeason < episodes.length ? (
+                    <Pressable
+                      onPress={() =>
+                        markBulk.mutate(
+                          episodes.map((episode) => ({
+                            tmdb_show_id: showId,
+                            season_number: episode.season_number,
+                            episode_number: episode.episode_number,
+                          }))
+                        )
+                      }
+                      disabled={markBulk.isPending}
+                      className="bg-surface-light px-3 py-1.5 rounded-md"
+                    >
+                      <Text className="text-accent text-xs font-bold">
+                        Tout marquer vu
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {episodes.map((episode) => {
+                  const isWatched = watched.has(
+                    episodeKey(episode.season_number, episode.episode_number)
+                  );
+                  return (
+                    <EpisodeCard
+                      key={episode.id}
+                      episode={episode}
+                      watched={isWatched}
+                      onToggleWatched={() => toggleEpisode(episode, isWatched)}
+                    />
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </Screen>
+  );
+}

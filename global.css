@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+@import 'uniwind';
+
+@theme {
+  --color-bg: #0d1321;
+  --color-surface: #1a2235;
+  --color-surface-light: #242f49;
+  --color-line: #2c3852;
+  --color-fg: #f5f7fa;
+  --color-muted: #8b94a7;
+  --color-accent: #ffd449;
+  --color-accent-fg: #1a1a05;
+  --color-success: #4cc38a;
+  --color-danger: #e5484d;
+}
