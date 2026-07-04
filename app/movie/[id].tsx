@@ -110,7 +110,10 @@ export default function MovieDetailScreen() {
         }
       />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="aspect-video bg-surface">
+        <View
+          className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
+          style={isDesktop ? { height: 360 } : undefined}
+        >
           {backdrop ? (
             <Image source={{ uri: backdrop }} className="w-full h-full" />
           ) : null}

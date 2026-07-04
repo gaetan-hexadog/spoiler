@@ -28,6 +28,7 @@ import {
   useTrackedShows,
   useTrendingShows,
 } from '@/hooks/queries';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useGridColumns } from '@/hooks/useGridColumns';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import type { UserMovie } from '@/lib/db';
@@ -103,6 +104,7 @@ export default function LibraryScreen() {
   const [search, setSearch] = useState('');
   const searching = searchOpen && search.trim().length > 0;
   const columns = useGridColumns();
+  const wide = useBreakpoint() !== 'mobile';
 
   const shows = useTrackedShows();
   const watched = useAllWatchedEpisodes();
@@ -480,7 +482,9 @@ export default function LibraryScreen() {
         </View>
       </View>
       <View className="flex-row items-center gap-2">
-        <View className="flex-1 flex-row bg-surface rounded-lg p-[3px]">
+        <View
+          className={`${wide ? 'self-start' : 'flex-1'} flex-row bg-surface rounded-lg p-[3px]`}
+        >
           {(
             [
               ['shows', 'Séries', watchingCount],
@@ -492,7 +496,7 @@ export default function LibraryScreen() {
               <Pressable
                 key={value}
                 onPress={() => setSegment(value)}
-                className={`flex-1 py-2 rounded-md flex-row items-center justify-center gap-1.5 ${
+                className={`${wide ? 'px-6' : 'flex-1'} py-2 rounded-md flex-row items-center justify-center gap-1.5 ${
                   active ? 'bg-accent' : ''
                 }`}
               >

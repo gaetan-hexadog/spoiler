@@ -2,10 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, SectionList, Text, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  SectionList,
+  Text,
+  View,
+} from 'react-native';
 import { RowListSkeleton } from '@/components/Skeleton';
 import { EmptyState, Screen } from '@/components/ui';
 import { useAllWatchedEpisodes, useTrackedShows } from '@/hooks/queries';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { syncEpisodeNotifications } from '@/lib/notifications';
 import { episodeKey } from '@/lib/progress';
@@ -33,8 +41,16 @@ interface CalendarItem {
 
 const RECENT_DAYS = 14;
 
+/** YYYY-MM-DD en date locale (évite le décalage UTC de toISOString). */
+function toLocalIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalIso(new Date());
 }
 
 function relativeLabel(airDate: string): string {
@@ -59,9 +75,28 @@ function dateHeader(airDate: string): string {
   return relative ? `${label} · ${relative}` : label;
 }
 
+/** Lundi de la semaine (décalée de `offset` semaines), au format YYYY-MM-DD. */
+function weekStartIso(offset: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const dow = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - dow + offset * 7);
+  return toLocalIso(d);
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return toLocalIso(d);
+}
+
+const WEEKDAYS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
+
 export default function CalendarScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('upcoming');
+  const [weekOffset, setWeekOffset] = useState(0);
+  const isDesktop = useBreakpoint() === 'desktop';
   const shows = useTrackedShows();
   const watchedRows = useAllWatchedEpisodes();
 
@@ -210,6 +245,23 @@ export default function CalendarScreen() {
     ).catch(() => {});
   }, [notifEnabled, loading, items]);
 
+  // Grille semaine (desktop) : les épisodes de la semaine affichée, par jour.
+  const start = weekStartIso(weekOffset);
+  const weekDays = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    const byDay = new Map<string, typeof items>();
+    for (const item of items) {
+      if (item.airDate >= days[0] && item.airDate <= days[6]) {
+        const list = byDay.get(item.airDate) ?? [];
+        list.push(item);
+        byDay.set(item.airDate, list);
+      }
+    }
+    return days.map((iso) => ({ iso, items: byDay.get(iso) ?? [] }));
+  }, [items, start]);
+  const weekLabel = `${new Date(`${start}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${new Date(`${addDays(start, 6)}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+  const today = isoToday();
+
   if (loading) {
     return (
       <Screen>
@@ -218,13 +270,32 @@ export default function CalendarScreen() {
     );
   }
 
+  const useWeekGrid = isDesktop && mode === 'upcoming';
+
   return (
     <Screen>
-      <View className="flex-1 w-full max-w-[760px] self-center">
-      <Text className="text-fg text-2xl font-extrabold px-4 pt-3">
-        Calendrier
-      </Text>
-      <View className="flex-row bg-surface rounded-lg p-[3px] mx-4 mt-3 mb-1">
+      <View
+        className={`flex-1 w-full self-center ${useWeekGrid ? '' : 'max-w-[760px]'}`}
+      >
+      <View className="flex-row items-center justify-between px-4 pt-3">
+        <Text className="text-fg text-2xl font-extrabold">Calendrier</Text>
+        {useWeekGrid ? (
+          <View className="flex-row items-center gap-3">
+            <Pressable onPress={() => setWeekOffset((o) => o - 1)} hitSlop={8}>
+              <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
+            </Pressable>
+            <Text className="text-fg text-sm font-semibold min-w-[110px] text-center">
+              {weekOffset === 0 ? 'Cette semaine' : weekLabel}
+            </Text>
+            <Pressable onPress={() => setWeekOffset((o) => o + 1)} hitSlop={8}>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+      <View
+        className={`flex-row bg-surface rounded-lg p-[3px] mt-3 mb-1 ${isDesktop ? 'self-start mx-4' : 'mx-4'}`}
+      >
         {(
           [
             ['upcoming', 'À venir'],
@@ -234,7 +305,7 @@ export default function CalendarScreen() {
           <Pressable
             key={value}
             onPress={() => setMode(value)}
-            className={`flex-1 py-2 rounded-md items-center ${
+            className={`${isDesktop ? 'px-6' : 'flex-1'} py-2 rounded-md items-center ${
               mode === value ? 'bg-accent' : ''
             }`}
           >
@@ -249,7 +320,68 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      {sections.length ? (
+      {useWeekGrid ? (
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          <View className="flex-row gap-2">
+            {weekDays.map((day) => {
+              const d = new Date(`${day.iso}T00:00:00`);
+              const isToday = day.iso === today;
+              return (
+                <View key={day.iso} className="flex-1">
+                  <View className="items-center mb-2">
+                    <Text className="text-muted text-[11px]">
+                      {WEEKDAYS[(d.getDay() + 6) % 7]}
+                    </Text>
+                    <Text
+                      className={`text-[15px] font-bold ${isToday ? 'text-accent-fg bg-accent px-2 rounded-md' : 'text-fg'}`}
+                    >
+                      {d.getDate()}
+                    </Text>
+                  </View>
+                  <View className="gap-1.5">
+                    {day.items.map((item) => {
+                      const uri = imageUrl(item.posterPath, 'w185');
+                      return (
+                        <Pressable
+                          key={`${item.showId}-${item.season}-${item.episode}`}
+                          onPress={() =>
+                            router.push(`/show/${item.showId}?tab=episodes`)
+                          }
+                          className="bg-surface rounded-lg overflow-hidden"
+                          style={({ pressed }) =>
+                            pressed ? { opacity: 0.8 } : undefined
+                          }
+                        >
+                          <View className="aspect-video bg-surface-light">
+                            {uri ? (
+                              <Image
+                                source={{ uri }}
+                                className="w-full h-full"
+                              />
+                            ) : null}
+                          </View>
+                          <View className="p-1.5">
+                            <Text
+                              className="text-fg text-[11px] font-bold"
+                              numberOfLines={1}
+                            >
+                              {item.showName}
+                            </Text>
+                            <Text className="text-muted text-[10px]">
+                              S{String(item.season).padStart(2, '0')}E
+                              {String(item.episode).padStart(2, '0')}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      ) : sections.length ? (
         <SectionList
           sections={sections}
           keyExtractor={(item) =>

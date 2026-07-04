@@ -282,7 +282,10 @@ export default function ShowDetailScreen() {
         }
       />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="aspect-video bg-surface">
+        <View
+          className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
+          style={isDesktop ? { height: 360 } : undefined}
+        >
           {backdrop ? (
             <Image source={{ uri: backdrop }} className="w-full h-full" />
           ) : null}
@@ -359,7 +362,9 @@ export default function ShowDetailScreen() {
             />
           ) : null}
 
-          <View className="flex-row bg-surface rounded-lg p-[3px]">
+          <View
+            className={`${isDesktop ? 'self-start' : ''} flex-row bg-surface rounded-lg p-[3px]`}
+          >
             {(
               [
                 ['about', 'À propos'],
@@ -369,7 +374,7 @@ export default function ShowDetailScreen() {
               <Pressable
                 key={value}
                 onPress={() => setTab(value)}
-                className={`flex-1 py-2 rounded-md items-center ${
+                className={`${isDesktop ? 'px-10' : 'flex-1'} py-2 rounded-md items-center ${
                   tab === value ? 'bg-accent' : ''
                 }`}
               >
