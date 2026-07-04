@@ -5,6 +5,7 @@ import * as Updates from 'expo-updates';
 import React, { useMemo, useState } from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   Switch,
@@ -314,18 +315,20 @@ export default function ProfileScreen() {
         {/* Réglages */}
         <View className={`gap-2 ${isDesktop ? 'flex-1' : ''}`}>
           <Text className="text-fg text-lg font-bold">Réglages</Text>
-          <SettingRow
-            icon="notifications"
-            label="Notifications de diffusion"
-            right={
-              <Switch
-                value={notifEnabled}
-                onValueChange={toggleNotifications}
-                trackColor={{ false: colors.surfaceLight, true: colors.accent }}
-                thumbColor={colors.text}
-              />
-            }
-          />
+          {notificationsAvailable ? (
+            <SettingRow
+              icon="notifications"
+              label="Notifications de diffusion"
+              right={
+                <Switch
+                  value={notifEnabled}
+                  onValueChange={toggleNotifications}
+                  trackColor={{ false: colors.surfaceLight, true: colors.accent }}
+                  thumbColor={colors.text}
+                />
+              }
+            />
+          ) : null}
           <SettingRow
             icon="time"
             label="Historique de visionnage"
@@ -346,15 +349,15 @@ export default function ProfileScreen() {
             label="Importer depuis Netflix"
             onPress={() => router.push('/import-netflix')}
           />
-          <SettingRow
-            icon="refresh"
-            label={
-              checkingUpdate
-                ? 'Vérification…'
-                : 'Rechercher une mise à jour'
-            }
-            onPress={checkForUpdate}
-          />
+          {Platform.OS !== 'web' && Updates.isEnabled ? (
+            <SettingRow
+              icon="refresh"
+              label={
+                checkingUpdate ? 'Vérification…' : 'Rechercher une mise à jour'
+              }
+              onPress={checkForUpdate}
+            />
+          ) : null}
           <SettingRow
             icon="log-out"
             label="Se déconnecter"
