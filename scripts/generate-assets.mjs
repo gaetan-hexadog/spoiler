@@ -8,7 +8,7 @@ const NAVY = '#0D1321';
 const MUTED = '#242F49';
 const ACCENT = '#FFD449';
 
-// Trois barres arrondies façon texte spoiler masqué.
+// Trois barres arrondies façon texte popcornlog masqué.
 function bars(color1, color2, color3) {
   return `
     <rect x="232" y="330" width="560" height="96" rx="48" fill="${color1}"/>
@@ -30,6 +30,12 @@ const splashSvg = svg(bars(MUTED, ACCENT, MUTED));
 
 mkdirSync('assets', { recursive: true });
 
+// Logo resserré (sans marges) pour l'UI de l'app.
+const logoSvg = `
+<svg width="560" height="364" viewBox="232 330 560 364" xmlns="http://www.w3.org/2000/svg">
+  ${bars(MUTED, ACCENT, MUTED)}
+</svg>`;
+
 const jobs = [
   ['assets/icon.png', iconSvg, 1024],
   ['assets/android-icon-foreground.png', foregroundSvg, 1024],
@@ -42,6 +48,9 @@ for (const [file, source, size] of jobs) {
   await sharp(Buffer.from(source)).resize(size, size).png().toFile(file);
   console.log('✓', file);
 }
+
+await sharp(Buffer.from(logoSvg)).resize(512).png().toFile('assets/logo.png');
+console.log('✓ assets/logo.png');
 
 // Fond uni pour l'adaptive icon Android.
 await sharp({

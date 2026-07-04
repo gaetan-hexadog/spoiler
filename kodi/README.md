@@ -1,6 +1,6 @@
-# Spoiler Scrobbler pour Kodi
+# PopcornLog Scrobbler pour Kodi
 
-Service Kodi qui enregistre automatiquement dans **Spoiler** (Supabase) les
+Service Kodi qui enregistre automatiquement dans **PopcornLog** (Supabase) les
 films et épisodes que tu termines.
 
 ## Comment ça marche
@@ -14,14 +14,14 @@ films et épisodes que tu termines.
 - Identification : IDs TMDB fournis par les scrapers Kodi en priorité, sinon
   conversion TVDB/IMDB → TMDB, sinon recherche par titre (nécessite le jeton
   TMDB dans les réglages).
-- Épisode loggé → la série est automatiquement suivie dans Spoiler ; film
+- Épisode loggé → la série est automatiquement suivie dans PopcornLog ; film
   loggé → ajouté en « vu » (le statut watchlist est écrasé, la note est
   conservée).
 
 ## Association par code (zéro saisie à la télécommande)
 
 Au premier lancement, l'extension affiche un **code à 6 caractères**.
-Dans l'app Spoiler : **Profil → Réglages → Associer un appareil Kodi**,
+Dans l'app PopcornLog : **Profil → Réglages → Associer un appareil Kodi**,
 saisis le code — c'est tout. Kodi récupère sa propre session Supabase
 (jeton à usage unique généré côté serveur) et même ton jeton TMDB envoyé
 par l'app. L'URL du projet et la clé publishable sont pré-embarquées dans
@@ -43,7 +43,7 @@ supabase functions deploy pair-device
 
 ## Installation
 
-1. Copier `service.spoiler-1.1.0.zip` sur l'appareil Kodi.
+1. Copier `service.popcornlog-1.1.0.zip` sur l'appareil Kodi.
 2. Kodi → **Paramètres → Extensions → Installer depuis un fichier zip**
    (autoriser les « sources inconnues » si demandé).
 3. Le code d'association s'affiche → le saisir dans l'app (10 min max,
@@ -56,5 +56,5 @@ Compatible Kodi 20 (Nexus) et plus récent.
 ## Re-packager après modification
 
 ```bash
-cd kodi && zip -r service.spoiler-1.1.0.zip service.spoiler
+cd kodi && zip -r service.popcornlog-1.1.0.zip service.popcornlog
 ```

@@ -192,7 +192,7 @@ export default function ProfileScreen() {
       if (!granted) {
         Alert.alert(
           'Notifications refusées',
-          'Autorise les notifications pour Spoiler dans les réglages Android.'
+          'Autorise les notifications pour PopcornLog dans les réglages Android.'
         );
         return;
       }
@@ -321,7 +321,7 @@ export default function ProfileScreen() {
         </View>
 
         <Muted>
-          Spoiler v{Constants.expoConfig?.version ?? '1.0.0'}
+          PopcornLog v{Constants.expoConfig?.version ?? '1.0.0'}
           {Updates.updateId ? ` · maj ${Updates.updateId.slice(0, 8)}` : ''}
           {'\n'}Temps d'écran estimé (42 min/épisode, 1 h 50/film). Données
           TMDB — application non approuvée par TMDB.

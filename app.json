@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Spoiler",
-    "slug": "tv-time",
+    "name": "PopcornLog",
+    "slug": "popcornlog",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
         "backgroundColor": "#0D1321"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.hexadog.spoiler"
+      "package": "com.hexadog.popcornlog"
     },
     "web": {
       "bundler": "metro",
@@ -36,11 +36,11 @@
       ],
       "expo-font"
     ],
-    "scheme": "spoiler",
+    "scheme": "popcornlog",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "53f5c37c-1466-4ca4-9efc-fa5d293a5973"
+        "projectId": "9bcb0535-f831-44a4-83cb-f7fecf7cd835"
       }
     },
     "runtimeVersion": {

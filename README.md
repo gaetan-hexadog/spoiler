@@ -1,4 +1,4 @@
-# 🍿 Spoiler
+# 🍿 PopcornLog
 
 Remplaçant de TV Time : suivi de séries épisode par épisode, watchlist films,
 calendrier des sorties. Construit avec **Expo / React Native**, **Supabase**
@@ -61,7 +61,7 @@ eas build --platform android --profile preview
 
 Avant la fermeture de TV Time, demande l'export de tes données
 (dans l'app : paramètres du compte, ou demande RGPD à support@tvtime.com).
-Dans Spoiler : **Profil → Importer mon historique TV Time**, puis sélectionne
+Dans PopcornLog : **Profil → Importer mon historique TV Time**, puis sélectionne
 le CSV des épisodes vus (`seen_episode.csv`). Chaque série est retrouvée sur
 TMDB et ton historique est recréé. Les séries non reconnues sont listées à la
 fin pour un ajout manuel.

@@ -24,7 +24,7 @@ def _http(method, url, body=None, headers=None):
         return error.code, payload
 
 
-class SpoilerError(Exception):
+class PopcornLogError(Exception):
     pass
 
 
@@ -43,7 +43,7 @@ def rpc(url, anon_key, name, args=None):
         },
     )
     if status not in (200, 201, 204):
-        raise SpoilerError((payload or {}).get('message') or 'erreur {}'.format(status))
+        raise PopcornLogError((payload or {}).get('message') or 'erreur {}'.format(status))
     return payload
 
 
@@ -56,7 +56,7 @@ def verify_magiclink(url, anon_key, token_hash):
         {'apikey': anon_key, 'Content-Type': 'application/json'},
     )
     if status != 200 or not payload or 'access_token' not in payload:
-        raise SpoilerError(
+        raise PopcornLogError(
             (payload or {}).get('error_description')
             or (payload or {}).get('msg')
             or 'échange du jeton impossible'
@@ -66,7 +66,7 @@ def verify_magiclink(url, anon_key, token_hash):
 
 # --- Client authentifié -------------------------------------------------------
 
-class SpoilerClient:
+class PopcornLogClient:
     """Session Supabase entretenue par refresh token (associé par code) —
     fallback email/mot de passe si renseignés dans les réglages."""
 
@@ -92,7 +92,7 @@ class SpoilerClient:
             message = (payload or {}).get('error_description') or (payload or {}).get(
                 'msg'
             ) or 'authentification impossible'
-            raise SpoilerError(message)
+            raise PopcornLogError(message)
         self.access_token = payload['access_token']
         self.refresh_token = payload.get('refresh_token') or self.refresh_token
         self.expiry = time.time() + int(payload.get('expires_in', 3600))
@@ -108,7 +108,7 @@ class SpoilerClient:
                     'refresh_token', {'refresh_token': self.refresh_token}
                 )
                 return
-            except SpoilerError:
+            except PopcornLogError:
                 self.refresh_token = None
                 if self.on_tokens:
                     self.on_tokens('')
@@ -117,7 +117,7 @@ class SpoilerClient:
                 'password', {'email': self.email, 'password': self.password}
             )
             return
-        raise SpoilerError('appareil non associé — relance Kodi pour obtenir un code')
+        raise PopcornLogError('appareil non associé — relance Kodi pour obtenir un code')
 
     def adopt_session(self, session):
         """Injecte la session obtenue lors de l'association."""
@@ -141,7 +141,7 @@ class SpoilerClient:
             },
         )
         if status not in (200, 201, 204):
-            raise SpoilerError((payload or {}).get('message') or 'erreur {}'.format(status))
+            raise PopcornLogError((payload or {}).get('message') or 'erreur {}'.format(status))
 
     def log_movie(self, tmdb_id, title, poster_path=None):
         self._rest(

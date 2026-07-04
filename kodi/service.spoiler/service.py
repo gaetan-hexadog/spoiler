@@ -1,4 +1,4 @@
-# Spoiler Scrobbler — service Kodi.
+# popcornlog Scrobbler — service Kodi.
 # Surveille la lecture ; quand elle dépasse le seuil configuré, enregistre le
 # film ou l'épisode comme vu dans Supabase (le générique de fin est ignoré).
 # Première utilisation : affiche un code d'association à saisir dans l'app
@@ -16,9 +16,9 @@ sys.path.insert(
     0, os.path.join(ADDON.getAddonInfo('path'), 'resources', 'lib')
 )
 import config  # noqa: E402
-from spoiler import (  # noqa: E402
-    SpoilerClient,
-    SpoilerError,
+from popcornlog import (  # noqa: E402
+    PopcornLogClient,
+    PopcornLogError,
     TmdbResolver,
     rpc,
     verify_magiclink,
@@ -30,7 +30,7 @@ PAIRING_TIMEOUT_SECONDS = 600
 
 
 def log(message, level=xbmc.LOGINFO):
-    xbmc.log('[service.spoiler] {}'.format(message), level)
+    xbmc.log('[service.popcornlog] {}'.format(message), level)
 
 
 def setting(key):
@@ -52,7 +52,7 @@ def notify(message, error=False):
     if setting('notify') != 'true' and not error:
         return
     xbmcgui.Dialog().notification(
-        'Spoiler',
+        'PopcornLog',
         message,
         xbmcgui.NOTIFICATION_ERROR if error else xbmcgui.NOTIFICATION_INFO,
         4000,
@@ -84,7 +84,7 @@ class Service:
         return bool(setting('refresh_token') or (setting('email') and setting('password')))
 
     def pair(self, monitor):
-        """Affiche un code OTP et attend sa validation dans l'app Spoiler.
+        """Affiche un code OTP et attend sa validation dans l'app PopcornLog.
 
         Tout est non bloquant pour l'interface : dialogue d'arrière-plan
         uniquement (une modale ouverte par un service pendant le flux
@@ -96,15 +96,15 @@ class Service:
             return False
         try:
             code = rpc(url, key, 'create_device_link')
-        except SpoilerError as error:
+        except PopcornLogError as error:
             notify('Association impossible : {}'.format(error), error=True)
             return False
 
         log('code d’association: {}'.format(code))
         dialog = xbmcgui.DialogProgressBG()
         dialog.create(
-            'Spoiler — code : {}'.format(code),
-            'App Spoiler → Profil → Associer un appareil Kodi',
+            'Popcorn Log — code : {}'.format(code),
+            'App Popcorn Log → Profil → Associer un appareil Kodi',
         )
         elapsed = 0
         try:
@@ -114,12 +114,12 @@ class Service:
                 elapsed += PAIRING_POLL_SECONDS
                 dialog.update(
                     int(elapsed * 100 / PAIRING_TIMEOUT_SECONDS),
-                    'Spoiler — code : {}'.format(code),
-                    'App Spoiler → Profil → Associer un appareil Kodi',
+                    'Popcorn Log — code : {}'.format(code),
+                    'App Popcorn Log → Profil → Associer un appareil Kodi',
                 )
                 try:
                     result = rpc(url, key, 'poll_device_link', {'p_code': code})
-                except SpoilerError:
+                except PopcornLogError as error:
                     continue
                 if not result:
                     continue
@@ -131,7 +131,7 @@ class Service:
                 notify('Appareil associé ✓')
                 log('association réussie')
                 return True
-        except SpoilerError as error:
+        except PopcornLogError as error:
             notify('Association échouée : {}'.format(error), error=True)
             return False
         finally:
@@ -147,7 +147,7 @@ class Service:
         if not url or not key:
             return None
         if self.client is None or self.client_config != current:
-            self.client = SpoilerClient(
+            self.client = PopcornLogClient(
                 url,
                 key,
                 email=setting('email') or None,
@@ -224,7 +224,7 @@ class Service:
         try:
             self.record(snapshot)
             self.logged.add(snapshot['key'])
-        except SpoilerError as error:
+        except PopcornLogError as error:
             log('échec: {}'.format(error), xbmc.LOGWARNING)
             notify('Échec : {}'.format(error), error=True)
         except Exception as error:  # noqa: BLE001 — le service ne doit pas mourir

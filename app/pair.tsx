@@ -62,7 +62,7 @@ export default function PairDeviceScreen() {
               Associer un appareil Kodi
             </Text>
             <Muted>
-              Installe l'extension Spoiler Scrobbler sur Kodi : elle affiche un
+              Installe l'extension PopcornLog Scrobbler sur Kodi : elle affiche un
               code à 6 caractères. Saisis-le ici pour connecter l'appareil à ton
               compte — sans rien taper à la télécommande.
             </Muted>
