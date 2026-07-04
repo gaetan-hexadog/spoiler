@@ -6,13 +6,19 @@ import { imageUrl, type TmdbCastMember } from '@/lib/tmdb';
 export function CastRow({ cast }: { cast: TmdbCastMember[] }) {
   const router = useRouter();
   if (!cast.length) return null;
+  // TMDB peut renvoyer le même acteur plusieurs fois (rôles multiples) :
+  // on dédoublonne par id pour éviter les clés dupliquées et les doublons.
+  const seen = new Set<number>();
+  const uniqueCast = cast.filter((member) =>
+    seen.has(member.id) ? false : (seen.add(member.id), true)
+  );
   return (
     <View className="gap-2.5">
       <Text className="text-fg text-lg font-bold px-4">Casting</Text>
       <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={cast.slice(0, 15)}
+        data={uniqueCast.slice(0, 15)}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
         renderItem={({ item }) => {

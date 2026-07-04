@@ -57,7 +57,7 @@ export function DesktopSidebar() {
       <View className="items-center pb-6">
         <Image
           source={require('../assets/logo.png')}
-          style={{ width: 34, height: 22 }}
+          style={{ width: 36, height: 36 }}
           resizeMode="contain"
         />
       </View>

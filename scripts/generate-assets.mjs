@@ -1,39 +1,54 @@
 // Génère les assets de l'app (icône, adaptive, monochrome, splash, favicon)
-// à partir du logo « texte censuré » : trois barres, celle du milieu en jaune.
+// à partir du logo PopcornLog : un seau de pop-corn jaune avec un triangle
+// « lecture » creusé dans le seau (pop-corn = film/série + play = visionnage).
 // Usage : node scripts/generate-assets.mjs
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 
 const NAVY = '#0D1321';
-const MUTED = '#242F49';
 const ACCENT = '#FFD449';
 
-// Trois barres arrondies façon texte popcornlog masqué.
-function bars(color1, color2, color3) {
+// Pop-corn dessiné dans un repère 120×120 (mêmes coordonnées que le logo de l'UI).
+// `pop` = couleur du seau + pop-corn ; `play` = couleur du triangle lecture
+// (null pour l'omettre, ex. icône monochrome → silhouette pleine).
+function popcornRaw(pop, play) {
   return `
-    <rect x="232" y="330" width="560" height="96" rx="48" fill="${color1}"/>
-    <rect x="232" y="464" width="430" height="96" rx="48" fill="${color2}"/>
-    <rect x="232" y="598" width="510" height="96" rx="48" fill="${color3}"/>
-  `;
+    <g fill="${pop}">
+      <circle cx="50" cy="39" r="8"/>
+      <circle cx="60" cy="36.5" r="8.5"/>
+      <circle cx="70" cy="39" r="8"/>
+      <circle cx="43" cy="45" r="7.5"/>
+      <circle cx="60" cy="44" r="7"/>
+      <circle cx="77" cy="45" r="7.5"/>
+      <circle cx="49" cy="50" r="7"/>
+      <circle cx="60" cy="50.5" r="7"/>
+      <circle cx="71" cy="50" r="7"/>
+      <rect x="26" y="53" width="68" height="11" rx="5.5"/>
+      <path d="M31 64 L89 64 L82 101 Q81 105 76 105 L44 105 Q39 105 38 101 Z"/>
+    </g>
+    ${play ? `<path d="M53 74 L53 95 L72 84.5 Z" fill="${play}"/>` : ''}`;
 }
 
-const svg = (content, background = 'none') => `
+// Version centrée dans un canvas 1024, avec ~62 % d'occupation.
+const svg = (pop, play, background = 'none') => `
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   ${background !== 'none' ? `<rect width="1024" height="1024" fill="${background}"/>` : ''}
-  ${content}
+  <g transform="translate(32,-20) scale(8)">
+    ${popcornRaw(pop, play)}
+  </g>
 </svg>`;
 
-const iconSvg = svg(bars(MUTED, ACCENT, MUTED), NAVY);
-const foregroundSvg = svg(bars(MUTED, ACCENT, MUTED));
-const monochromeSvg = svg(bars('#FFFFFF', '#FFFFFF', '#FFFFFF'));
-const splashSvg = svg(bars(MUTED, ACCENT, MUTED));
+const iconSvg = svg(ACCENT, NAVY, NAVY);
+const foregroundSvg = svg(ACCENT, NAVY);
+const monochromeSvg = svg('#FFFFFF', null);
+const splashSvg = svg(ACCENT, NAVY);
 
 mkdirSync('assets', { recursive: true });
 
-// Logo resserré (sans marges) pour l'UI de l'app.
+// Logo resserré (fond transparent) pour l'UI de l'app.
 const logoSvg = `
-<svg width="560" height="364" viewBox="232 330 560 364" xmlns="http://www.w3.org/2000/svg">
-  ${bars(MUTED, ACCENT, MUTED)}
+<svg width="360" height="410" viewBox="24 26 72 82" xmlns="http://www.w3.org/2000/svg">
+  ${popcornRaw(ACCENT, NAVY)}
 </svg>`;
 
 const jobs = [
