@@ -13,7 +13,6 @@ import {
 import { useActionSheet } from '@/components/ActionSheet';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
-import { DesktopSidebar } from '@/components/DesktopSidebar';
 import { EpisodeCard } from '@/components/EpisodeCard';
 import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
 import { PosterCard } from '@/components/PosterCard';
@@ -437,10 +436,8 @@ export default function ShowDetailScreen() {
   // --- Desktop : rail affiche/actions à gauche, contenu à droite ---
   if (isDesktop) {
     return (
-      <View className="flex-1 flex-row bg-bg">
+      <View className="flex-1 bg-bg">
         <Stack.Screen options={{ headerShown: false }} />
-        <DesktopSidebar />
-        <View className="flex-1">
         {sheet}
         <FloatingHeader
           right={
@@ -543,7 +540,6 @@ export default function ShowDetailScreen() {
             </View>
           </View>
         </ScrollView>
-        </View>
       </View>
     );
   }

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/lib/theme';
@@ -33,6 +33,15 @@ export function DesktopSidebar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
+  // Section active : l'onglet courant, ou le dernier visité quand on est sur
+  // une fiche détail (hors onglets) — pour garder un surlignage cohérent.
+  const [lastSection, setLastSection] = useState('/');
+  const currentMatch = ITEMS.find((item) => item.match(pathname))?.href;
+  useEffect(() => {
+    if (currentMatch) setLastSection(currentMatch);
+  }, [currentMatch]);
+  const activeHref = currentMatch ?? lastSection;
+
   return (
     <View
       style={{
@@ -53,7 +62,7 @@ export function DesktopSidebar() {
         />
       </View>
       {ITEMS.map((item) => {
-        const active = item.match(pathname);
+        const active = item.href === activeHref;
         const iconName = (active ? item.icon : `${item.icon}-outline`) as keyof typeof Ionicons.glyphMap;
         return (
           <Pressable
