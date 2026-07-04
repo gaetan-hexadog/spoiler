@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<settings>
+  <category label="Comportement">
+    <setting id="threshold" type="slider" label="Seuil « vu » (% de la durée)" default="85" range="50,5,100" option="int"/>
+    <setting id="min_duration" type="slider" label="Durée minimale (minutes)" default="5" range="1,1,30" option="int"/>
+    <setting id="notify" type="bool" label="Notification à chaque enregistrement" default="true"/>
+  </category>
+  <category label="Avancé (rempli automatiquement par l'association)">
+    <setting id="refresh_token" type="text" option="hidden" label="Jeton de session" default=""/>
+    <setting id="tmdb_token" type="text" label="Jeton TMDB (résolution de secours)" default=""/>
+    <setting id="supabase_url" type="text" label="URL Supabase (laisser vide = pré-embarquée)" default=""/>
+    <setting id="supabase_key" type="text" label="Clé publishable (laisser vide = pré-embarquée)" default=""/>
+    <setting id="email" type="text" label="Email (fallback sans association)" default=""/>
+    <setting id="password" type="text" option="hidden" label="Mot de passe (fallback)" default=""/>
+  </category>
+</settings>

@@ -16,7 +16,7 @@
         "backgroundColor": "#0D1321"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.gaetan.spoiler"
+      "package": "com.hexadog.spoiler"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,7 +31,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#0D1321"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "spoiler",
     "extra": {
@@ -39,6 +40,12 @@
       "eas": {
         "projectId": "53f5c37c-1466-4ca4-9efc-fa5d293a5973"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/53f5c37c-1466-4ca4-9efc-fa5d293a5973"
     }
   }
 }

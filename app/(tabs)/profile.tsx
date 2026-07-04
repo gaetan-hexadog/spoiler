@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import * as Updates from 'expo-updates';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -98,6 +100,37 @@ export default function ProfileScreen() {
     'notifications',
     false
   );
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const checkForUpdate = async () => {
+    if (!Updates.isEnabled) {
+      Alert.alert(
+        'Indisponible',
+        'Les mises à jour OTA ne fonctionnent que dans l’app installée (APK).'
+      );
+      return;
+    }
+    setCheckingUpdate(true);
+    try {
+      const result = await Updates.checkForUpdateAsync();
+      if (!result.isAvailable) {
+        Alert.alert('À jour ✓', 'Tu as déjà la dernière version.');
+        return;
+      }
+      await Updates.fetchUpdateAsync();
+      Alert.alert('Mise à jour prête', 'Redémarrer maintenant ?', [
+        { text: 'Plus tard', style: 'cancel' },
+        { text: 'Redémarrer', onPress: () => Updates.reloadAsync() },
+      ]);
+    } catch (error) {
+      Alert.alert(
+        'Erreur',
+        error instanceof Error ? error.message : 'Vérification impossible.'
+      );
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const showList = shows.data ?? [];
@@ -261,9 +294,23 @@ export default function ProfileScreen() {
             onPress={() => router.push('/history')}
           />
           <SettingRow
+            icon="tv"
+            label="Associer un appareil Kodi"
+            onPress={() => router.push('/pair')}
+          />
+          <SettingRow
             icon="download"
             label="Importer mon historique TV Time"
             onPress={() => router.push('/import')}
+          />
+          <SettingRow
+            icon="refresh"
+            label={
+              checkingUpdate
+                ? 'Vérification…'
+                : 'Rechercher une mise à jour'
+            }
+            onPress={checkForUpdate}
           />
           <SettingRow
             icon="log-out"
@@ -274,8 +321,10 @@ export default function ProfileScreen() {
         </View>
 
         <Muted>
-          Temps d'écran estimé (42 min/épisode, 1 h 50/film). Données TMDB —
-          application non approuvée par TMDB.
+          Spoiler v{Constants.expoConfig?.version ?? '1.0.0'}
+          {Updates.updateId ? ` · maj ${Updates.updateId.slice(0, 8)}` : ''}
+          {'\n'}Temps d'écran estimé (42 min/épisode, 1 h 50/film). Données
+          TMDB — application non approuvée par TMDB.
         </Muted>
       </ScrollView>
     </Screen>
