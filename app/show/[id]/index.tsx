@@ -263,6 +263,287 @@ export default function ShowDetailScreen() {
     watched.has(episodeKey(episode.season_number, episode.episode_number))
   ).length;
 
+  // --- Blocs de contenu réutilisés par les layouts mobile et desktop ---
+
+  const synopsisEl = show.overview ? (
+    <Text className="text-fg text-sm leading-[21px] opacity-90">
+      {show.overview}
+    </Text>
+  ) : null;
+
+  const ratingEl = trackedShow ? (
+    <RatingStars
+      value={trackedShow.rating}
+      onChange={(rating) => setRating.mutate({ tmdbId: showId, rating })}
+    />
+  ) : null;
+
+  const whereEl = (
+    <WhereToWatch providers={show['watch/providers']?.results?.FR} />
+  );
+
+  const castAndRecs = (
+    <View className="gap-6">
+      {show.credits?.cast?.length ? <CastRow cast={show.credits.cast} /> : null}
+      {filteredRecs.length ? (
+        <Carousel
+          title="Dans le même genre"
+          data={filteredRecs}
+          render={(item) => (
+            <PosterCard
+              title={item.name}
+              posterPath={item.poster_path}
+              subtitle={item.first_air_date?.slice(0, 4)}
+              width={110}
+              onPress={() => router.push(`/show/${item.id}`)}
+            />
+          )}
+        />
+      ) : null}
+    </View>
+  );
+
+  const seasonSelector = (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 8 }}
+    >
+      {seasons.map((season) => {
+        let seenInSeason = 0;
+        for (let e = 1; e <= season.episode_count; e++) {
+          if (watched.has(episodeKey(season.season_number, e))) seenInSeason++;
+        }
+        const complete = seenInSeason >= season.episode_count;
+        const active = season.season_number === activeSeason;
+        return (
+          <Pressable
+            key={season.id}
+            onPress={() => setSelectedSeason(season.season_number)}
+            className={`px-3.5 py-2 rounded-full flex-row items-center gap-1.5 ${
+              active ? 'bg-accent' : 'bg-surface'
+            }`}
+          >
+            <Text
+              className={`text-[13px] font-bold ${
+                active ? 'text-accent-fg' : 'text-muted'
+              }`}
+            >
+              {season.season_number === 0
+                ? 'Spéciaux'
+                : `Saison ${season.season_number}`}
+            </Text>
+            {complete ? (
+              <Ionicons
+                name="checkmark-circle"
+                size={14}
+                color={active ? colors.accentText : colors.success}
+              />
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+
+  const episodesBody = (
+    <View className="gap-4">
+      <View className="gap-1.5">
+        <Text className="text-muted text-[13px]">
+          {seen} / {total} épisodes vus
+        </Text>
+        <ProgressBar progress={total > 0 ? seen / total : 0} />
+      </View>
+      {seasonSelector}
+      {seasonDetails.isLoading ? (
+        <Text className="text-muted p-4 text-center">Chargement…</Text>
+      ) : (
+        <View className="gap-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-muted text-[13px]">
+              {seenInActiveSeason} / {episodes.length} vus
+              {activeSeasonSummary?.air_date
+                ? ` · ${activeSeasonSummary.air_date.slice(0, 4)}`
+                : ''}
+            </Text>
+            {seenInActiveSeason < episodes.length ? (
+              <Pressable
+                onPress={() =>
+                  markBulk.mutate(
+                    episodes.map((episode) => ({
+                      tmdb_show_id: showId,
+                      season_number: episode.season_number,
+                      episode_number: episode.episode_number,
+                    }))
+                  )
+                }
+                disabled={markBulk.isPending}
+                className="bg-surface-light px-3 py-1.5 rounded-md"
+              >
+                <Text className="text-accent text-xs font-bold">
+                  Tout marquer vu
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {episodes.map((episode) => {
+            const isWatched = watched.has(
+              episodeKey(episode.season_number, episode.episode_number)
+            );
+            return (
+              <EpisodeCard
+                key={episode.id}
+                episode={episode}
+                watched={isWatched}
+                onToggleWatched={() => toggleEpisode(episode, isWatched)}
+              />
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+
+  const tabSelector = (
+    <View
+      className={`${isDesktop ? 'self-start' : ''} flex-row bg-surface rounded-lg p-[3px]`}
+    >
+      {(
+        [
+          ['about', 'À propos'],
+          ['episodes', 'Épisodes'],
+        ] as [Tab, string][]
+      ).map(([value, label]) => (
+        <Pressable
+          key={value}
+          onPress={() => setTab(value)}
+          className={`${isDesktop ? 'px-10' : 'flex-1'} py-2 rounded-md items-center ${
+            tab === value ? 'bg-accent' : ''
+          }`}
+        >
+          <Text
+            className={`font-bold text-sm ${
+              tab === value ? 'text-accent-fg' : 'text-muted'
+            }`}
+          >
+            {label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  // --- Desktop : rail affiche/actions à gauche, contenu à droite ---
+  if (isDesktop) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        {sheet}
+        <FloatingHeader
+          right={
+            <>
+              {trackedShow ? (
+                <FloatingButton
+                  icon="ellipsis-horizontal"
+                  onPress={openOptions}
+                />
+              ) : null}
+              <FloatingButton
+                icon={trackedShow ? 'bookmark' : 'bookmark-outline'}
+                active={!!trackedShow}
+                onPress={trackedShow ? unfollow : follow}
+              />
+            </>
+          }
+        />
+        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+          <View className="bg-surface" style={{ height: 360 }}>
+            {backdrop ? (
+              <Image source={{ uri: backdrop }} className="w-full h-full" />
+            ) : null}
+            <LinearGradient
+              colors={['transparent', colors.bg]}
+              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
+            />
+            {(() => {
+              const trailer = findTrailer(show.videos);
+              return trailer ? (
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)
+                  }
+                  className="absolute inset-0 items-center justify-center"
+                >
+                  <View className="w-16 h-16 rounded-full bg-bg/70 border border-fg/30 items-center justify-center pl-1">
+                    <Ionicons name="play" size={30} color={colors.text} />
+                  </View>
+                </Pressable>
+              ) : null;
+            })()}
+          </View>
+
+          <View className="flex-row gap-8 px-8 -mt-24">
+            {/* Rail gauche : affiche + actions */}
+            <View className="w-52 gap-4">
+              {poster ? (
+                <Image
+                  source={{ uri: poster }}
+                  className="w-52 aspect-[2/3] rounded-2xl border-2 border-line"
+                />
+              ) : null}
+              {trackedShow ? (
+                <View className="flex-row items-center gap-2">
+                  {statusMeta ? (
+                    <View className={`px-3 py-1.5 rounded-full ${statusMeta.bg}`}>
+                      <Text className={`text-[12px] font-bold ${statusMeta.text}`}>
+                        {statusMeta.label}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : (
+                <Button
+                  title="+ Suivre"
+                  loading={trackShow.isPending}
+                  onPress={follow}
+                />
+              )}
+              {ratingEl}
+              {whereEl}
+            </View>
+
+            {/* Colonne droite : titre + onglets + contenu */}
+            <View className="flex-1 gap-4 pt-28">
+              <View className="gap-1">
+                <Text className="text-fg text-3xl font-extrabold">
+                  {show.name}
+                </Text>
+                <Text className="text-muted text-sm">
+                  {show.first_air_date?.slice(0, 4)}
+                  {show.genres.length
+                    ? ` · ${show.genres.slice(0, 3).map((g) => g.name).join(', ')}`
+                    : ''}
+                  {show.vote_average
+                    ? `  ·  ★ ${show.vote_average.toFixed(1)}`
+                    : ''}
+                </Text>
+              </View>
+              {tabSelector}
+              {tab === 'about' ? (
+                <View className="gap-6">
+                  {synopsisEl}
+                  {castAndRecs}
+                </View>
+              ) : (
+                episodesBody
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />

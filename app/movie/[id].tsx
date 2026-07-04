@@ -75,6 +75,171 @@ export default function MovieDetailScreen() {
     .filter((item) => !myMovieIds.has(item.id))
     .slice(0, 12);
 
+  // --- Blocs réutilisés par les layouts mobile et desktop ---
+  const actionsEl = !saved ? (
+    <Button
+      title="✓ Je l'ai déjà vu"
+      loading={addMovie.isPending}
+      onPress={() =>
+        addMovie.mutate({
+          tmdb_id: movie.id,
+          title: movie.title,
+          poster_path: movie.poster_path,
+          status: 'watched',
+        })
+      }
+    />
+  ) : saved.status === 'watchlist' ? (
+    <Button
+      title="✓ Marquer comme vu"
+      loading={setStatus.isPending}
+      onPress={() => setStatus.mutate({ tmdbId: movieId, status: 'watched' })}
+    />
+  ) : (
+    <View className="gap-3">
+      <Text className="text-success text-[15px] font-extrabold">✓ Vu</Text>
+      <RatingStars
+        value={saved.rating}
+        onChange={(rating) => setRating.mutate({ tmdbId: movieId, rating })}
+      />
+      <Button
+        title="Remettre dans la watchlist"
+        variant="ghost"
+        loading={setStatus.isPending}
+        onPress={() => setStatus.mutate({ tmdbId: movieId, status: 'watchlist' })}
+      />
+    </View>
+  );
+
+  const whereEl = (
+    <WhereToWatch providers={movie['watch/providers']?.results?.FR} />
+  );
+
+  const castAndRecs = (
+    <View className="gap-6 pb-4">
+      {movie.credits?.cast?.length ? (
+        <CastRow cast={movie.credits.cast} />
+      ) : null}
+      {filteredRecs.length ? (
+        <Carousel
+          title="Dans le même genre"
+          data={filteredRecs}
+          render={(item) => (
+            <PosterCard
+              title={item.title}
+              posterPath={item.poster_path}
+              subtitle={item.release_date?.slice(0, 4)}
+              width={110}
+              onPress={() => router.push(`/movie/${item.id}`)}
+            />
+          )}
+        />
+      ) : null}
+    </View>
+  );
+
+  // --- Desktop : rail affiche/actions à gauche, contenu à droite ---
+  if (isDesktop) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        {sheet}
+        <FloatingHeader
+          right={
+            <FloatingButton
+              icon={saved ? 'bookmark' : 'bookmark-outline'}
+              active={!!saved}
+              onPress={() => {
+                if (!saved) {
+                  addMovie.mutate({
+                    tmdb_id: movie.id,
+                    title: movie.title,
+                    poster_path: movie.poster_path,
+                    status: 'watchlist',
+                  });
+                } else {
+                  openSheet({
+                    title: 'Retirer de mes films',
+                    message: movie.title,
+                    actions: [
+                      {
+                        label: 'Retirer',
+                        variant: 'danger',
+                        onPress: () => removeMovie.mutate(movieId),
+                      },
+                    ],
+                  });
+                }
+              }}
+            />
+          }
+        />
+        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+          <View className="bg-surface" style={{ height: 360 }}>
+            {backdrop ? (
+              <Image source={{ uri: backdrop }} className="w-full h-full" />
+            ) : null}
+            <LinearGradient
+              colors={['transparent', colors.bg]}
+              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
+            />
+            {(() => {
+              const trailer = findTrailer(movie.videos);
+              return trailer ? (
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)
+                  }
+                  className="absolute inset-0 items-center justify-center"
+                >
+                  <View className="w-16 h-16 rounded-full bg-bg/70 border border-fg/30 items-center justify-center pl-1">
+                    <Ionicons name="play" size={30} color={colors.text} />
+                  </View>
+                </Pressable>
+              ) : null;
+            })()}
+          </View>
+
+          <View className="flex-row gap-8 px-8 -mt-24">
+            <View className="w-52 gap-4">
+              {poster ? (
+                <Image
+                  source={{ uri: poster }}
+                  className="w-52 aspect-[2/3] rounded-2xl border-2 border-line"
+                />
+              ) : null}
+              {actionsEl}
+              {whereEl}
+            </View>
+            <View className="flex-1 gap-5 pt-28">
+              <View className="gap-1">
+                <Text className="text-fg text-3xl font-extrabold">
+                  {movie.title}
+                </Text>
+                <Text className="text-muted text-sm">
+                  {movie.release_date?.slice(0, 4)}
+                  {movie.runtime ? ` · ${movie.runtime} min` : ''}
+                  {movie.genres.length
+                    ? ` · ${movie.genres.slice(0, 3).map((g) => g.name).join(', ')}`
+                    : ''}
+                  {movie.vote_average
+                    ? `  ·  ★ ${movie.vote_average.toFixed(1)}`
+                    : ''}
+                </Text>
+              </View>
+              {movie.overview ? (
+                <Text className="text-fg text-sm leading-[22px] opacity-90">
+                  {movie.overview}
+                </Text>
+              ) : null}
+              {castAndRecs}
+            </View>
+          </View>
+        </ScrollView>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
