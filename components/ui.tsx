@@ -16,7 +16,15 @@ export function Screen({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <View className={`flex-1 bg-bg ${className ?? ''}`}>{children}</View>;
+  // Contenu centré et borné sur grand écran (web/tablette),
+  // pleine largeur sur téléphone.
+  return (
+    <View className={`flex-1 bg-bg ${className ?? ''}`}>
+      <View className="flex-1 w-full max-w-[1200px] self-center">
+        {children}
+      </View>
+    </View>
+  );
 }
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {

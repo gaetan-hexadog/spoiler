@@ -4,13 +4,14 @@ import { imageUrl } from '@/lib/tmdb';
 
 /**
  * Carte affiche : `width` fixe pour les carrousels horizontaux,
- * sinon flex 1/3 pour les grilles à 3 colonnes.
+ * sinon fraction de ligne selon `columns` (grilles responsives).
  */
 export function PosterCard({
   title,
   posterPath,
   subtitle,
   width,
+  columns = 3,
   onPress,
   onLongPress,
 }: {
@@ -18,6 +19,7 @@ export function PosterCard({
   posterPath: string | null;
   subtitle?: string;
   width?: number;
+  columns?: number;
   onPress: () => void;
   onLongPress?: () => void;
 }) {
@@ -28,7 +30,7 @@ export function PosterCard({
       onLongPress={onLongPress}
       className="m-1.5 mb-3"
       style={({ pressed }) => [
-        width ? { width } : { flex: 1 / 3 },
+        width ? { width } : { flex: 1 / columns },
         pressed && { opacity: 0.7 },
       ]}
     >

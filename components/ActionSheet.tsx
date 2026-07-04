@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
+import { BottomSheet } from '@/components/BottomSheet';
 
 export interface ActionSheetAction {
   label: string;
@@ -13,80 +14,87 @@ export interface ActionSheetConfig {
   actions: ActionSheetAction[];
 }
 
-/** Bottom-sheet maison — remplace les Alert natifs pour les choix. */
+/** Feuille d'actions maison — remplace les Alert natifs pour les choix. */
 export function ActionSheet({
   visible,
   title,
   message,
   actions,
   onClose,
-}: ActionSheetConfig & { visible: boolean; onClose: () => void }) {
+  onDismissed,
+}: ActionSheetConfig & {
+  visible: boolean;
+  onClose: () => void;
+  onDismissed?: () => void;
+}) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable className="flex-1 bg-bg/70 justify-end" onPress={onClose}>
+    <BottomSheet visible={visible} onClose={onClose} onDismissed={onDismissed}>
+      {title ? (
+        <Text className="text-fg text-lg font-bold">{title}</Text>
+      ) : null}
+      {message ? (
+        <Text className="text-muted text-sm mb-1">{message}</Text>
+      ) : null}
+      {actions.map((action) => (
         <Pressable
-          className="bg-surface rounded-t-3xl px-5 pt-3 pb-9 gap-2"
-          onPress={(event) => event.stopPropagation()}
+          key={action.label}
+          onPress={() => {
+            onClose();
+            action.onPress();
+          }}
+          className={`py-3.5 rounded-xl items-center ${
+            action.variant === 'danger'
+              ? 'bg-danger/15'
+              : action.variant === 'primary'
+                ? 'bg-accent'
+                : 'bg-surface-light'
+          }`}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
         >
-          {/* Poignée : signale que la sheet se ferme d'un tap sur le fond. */}
-          <View className="self-center w-10 h-1 rounded-full bg-surface-light mb-2" />
-          {title ? (
-            <Text className="text-fg text-lg font-bold">{title}</Text>
-          ) : null}
-          {message ? (
-            <Text className="text-muted text-sm mb-1">{message}</Text>
-          ) : null}
-          {actions.map((action) => (
-            <Pressable
-              key={action.label}
-              onPress={() => {
-                onClose();
-                action.onPress();
-              }}
-              className={`py-3.5 rounded-xl items-center ${
-                action.variant === 'danger'
-                  ? 'bg-danger/15'
-                  : action.variant === 'primary'
-                    ? 'bg-accent'
-                    : 'bg-surface-light'
-              }`}
-              style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
-            >
-              <Text
-                className={`text-[15px] font-bold ${
-                  action.variant === 'danger'
-                    ? 'text-danger'
-                    : action.variant === 'primary'
-                      ? 'text-accent-fg'
-                      : 'text-fg'
-                }`}
-              >
-                {action.label}
-              </Text>
-            </Pressable>
-          ))}
+          <Text
+            className={`text-[15px] font-bold ${
+              action.variant === 'danger'
+                ? 'text-danger'
+                : action.variant === 'primary'
+                  ? 'text-accent-fg'
+                  : 'text-fg'
+            }`}
+          >
+            {action.label}
+          </Text>
         </Pressable>
-      </Pressable>
-    </Modal>
+      ))}
+    </BottomSheet>
   );
 }
 
 /** Contrôleur : `const { show, sheet } = useActionSheet()` puis rendre {sheet}. */
 export function useActionSheet() {
   const [config, setConfig] = useState<ActionSheetConfig | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  const show = (next: ActionSheetConfig) => {
+    setConfig(next);
+    setVisible(true);
+  };
+
   const sheet = config ? (
     <ActionSheet
-      visible
+      visible={visible}
       title={config.title}
       message={config.message}
       actions={config.actions}
-      onClose={() => setConfig(null)}
+      onClose={() => setVisible(false)}
+      onDismissed={() => {
+        // Ne pas effacer la config si une nouvelle sheet a été rouverte
+        // pendant l'animation de sortie (cas de la confirmation en chaîne).
+        setVisible((current) => {
+          if (!current) setConfig(null);
+          return current;
+        });
+      }}
     />
   ) : null;
-  return { show: setConfig, sheet };
+
+  return { show, sheet };
 }

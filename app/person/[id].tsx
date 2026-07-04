@@ -4,6 +4,7 @@ import { FlatList, Image, Pressable, Text, View } from 'react-native';
 import { PosterCard } from '@/components/PosterCard';
 import { Loading, Screen } from '@/components/ui';
 import { usePersonDetails } from '@/hooks/queries';
+import { useGridColumns } from '@/hooks/useGridColumns';
 import { imageUrl, type TmdbPersonCredit } from '@/lib/tmdb';
 
 function age(birthday: string, deathday: string | null): number {
@@ -24,6 +25,7 @@ export default function PersonScreen() {
   const personId = Number(params.id);
   const router = useRouter();
   const person = usePersonDetails(personId);
+  const columns = useGridColumns();
   const [bioExpanded, setBioExpanded] = useState(false);
 
   // Filmographie : dédupliquée, triée par date de sortie décroissante.
@@ -65,8 +67,9 @@ export default function PersonScreen() {
     <Screen>
       <Stack.Screen options={{ title: data.name }} />
       <FlatList
+        key={`credits-${columns}`}
         data={credits}
-        numColumns={3}
+        numColumns={columns}
         keyExtractor={(item) => `${item.media_type}-${item.id}`}
         contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 32 }}
         ListHeaderComponent={
@@ -123,6 +126,7 @@ export default function PersonScreen() {
         }
         renderItem={({ item }) => (
           <PosterCard
+            columns={columns}
             title={item.title ?? item.name ?? ''}
             posterPath={item.poster_path}
             subtitle={

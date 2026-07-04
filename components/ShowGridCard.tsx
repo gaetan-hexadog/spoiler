@@ -21,9 +21,11 @@ import { imageUrl } from '@/lib/tmdb';
 export function ShowGridCard({
   show,
   allWatched,
+  columns = 3,
 }: {
   show: TrackedShow;
   allWatched: WatchedEpisode[];
+  columns?: number;
 }) {
   const router = useRouter();
   const { data: details } = useShowDetails(show.tmdb_id);
@@ -51,7 +53,10 @@ export function ShowGridCard({
       onPress={() => router.push(`/show/${show.tmdb_id}`)}
       onLongPress={() => quickActions(show, upToDate ? null : next)}
       className="m-1.5 mb-3"
-      style={({ pressed }) => [{ flex: 1 / 3 }, pressed && { opacity: 0.7 }]}
+      style={({ pressed }) => [
+        { flex: 1 / columns },
+        pressed && { opacity: 0.7 },
+      ]}
     >
       {sheet}
       <View className="aspect-[2/3] rounded-xl bg-surface overflow-hidden">

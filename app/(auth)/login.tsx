@@ -56,9 +56,6 @@ export default function LoginScreen() {
             loading={loading}
             disabled={!email || !password}
           />
-          <Link href="/signup" className="text-accent text-center mt-2 text-sm">
-            Pas encore de compte ? S'inscrire
-          </Link>
         </View>
       </KeyboardAvoidingView>
     </Screen>

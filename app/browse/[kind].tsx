@@ -9,6 +9,7 @@ import {
   useTrendingMovies,
   useTrendingShows,
 } from '@/hooks/queries';
+import { useGridColumns } from '@/hooks/useGridColumns';
 import { colors } from '@/lib/theme';
 
 export const BROWSE_TITLES: Record<string, string> = {
@@ -22,6 +23,7 @@ export default function BrowseScreen() {
   const params = useLocalSearchParams<{ kind: string }>();
   const kind = params.kind ?? 'trending-tv';
   const router = useRouter();
+  const columns = useGridColumns();
 
   const trendingShows = useTrendingShows();
   const trendingMovies = useTrendingMovies();
@@ -47,8 +49,9 @@ export default function BrowseScreen() {
         <Loading />
       ) : source.items.length ? (
         <FlatList
+          key={`browse-${columns}`}
           data={source.items as { id: number }[]}
-          numColumns={3}
+          numColumns={columns}
           keyExtractor={(item, index) => `${item.id}-${index}`}
           contentContainerStyle={{ padding: 8, paddingBottom: 32 }}
           onEndReached={source.loadMore}
@@ -68,6 +71,7 @@ export default function BrowseScreen() {
                   title={show.name}
                   posterPath={show.poster_path}
                   subtitle={show.first_air_date?.slice(0, 4)}
+                  columns={columns}
                   onPress={() => router.push(`/show/${show.id}`)}
                 />
               );
@@ -78,6 +82,7 @@ export default function BrowseScreen() {
                 title={movie.title}
                 posterPath={movie.poster_path}
                 subtitle={movie.release_date?.slice(0, 4)}
+                columns={columns}
                 onPress={() => router.push(`/movie/${movie.id}`)}
               />
             );

@@ -42,7 +42,14 @@ export function FloatingHeader({ right }: { right?: React.ReactNode }) {
       className="absolute left-0 right-0 z-10 flex-row justify-between px-3"
       style={{ top: insets.top + 4 }}
     >
-      <FloatingButton icon="arrow-back" onPress={() => router.back()} />
+      <FloatingButton
+        icon="arrow-back"
+        onPress={() => {
+          // Web : après un accès direct / refresh, il n'y a pas d'historique.
+          if (router.canGoBack()) router.back();
+          else router.replace('/');
+        }}
+      />
       <View className="flex-row gap-2">{right}</View>
     </View>
   );

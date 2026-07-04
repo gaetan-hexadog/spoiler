@@ -4,7 +4,6 @@ import { useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useActionSheet } from '@/components/ActionSheet';
+import { BottomSheet } from '@/components/BottomSheet';
 import { Carousel } from '@/components/Carousel';
 import { MovieRowCard } from '@/components/MovieRowCard';
 import { PosterCard } from '@/components/PosterCard';
@@ -28,6 +28,7 @@ import {
   useTrackedShows,
   useTrendingShows,
 } from '@/hooks/queries';
+import { useGridColumns } from '@/hooks/useGridColumns';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import type { UserMovie } from '@/lib/db';
 import type { MovieStatus, ShowStatus, TrackedShow } from '@/lib/db';
@@ -102,6 +103,7 @@ export default function LibraryScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const searching = searchOpen && search.trim().length > 0;
+  const columns = useGridColumns();
 
   // Actions intégrées au header natif : recherche + tri + bascule liste/grille.
   useEffect(() => {
@@ -432,7 +434,10 @@ export default function LibraryScreen() {
         {grid ? (
           <View className="flex-row flex-wrap px-2">
             {staleShows.map((item) => (
-              <View key={item.tmdb_id} style={{ width: '33.333%' }}>
+              <View
+                key={item.tmdb_id}
+                style={{ width: `${100 / columns}%` }}
+              >
                 <ShowGridCard show={item} allWatched={watched.data ?? []} />
               </View>
             ))}
@@ -450,48 +455,32 @@ export default function LibraryScreen() {
     ) : null;
 
   const sortModalElement = (
-    <Modal
-      visible={sortModal}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setSortModal(false)}
-    >
-      <Pressable
-        className="flex-1 bg-bg/70 justify-end"
-        onPress={() => setSortModal(false)}
-      >
+    <BottomSheet visible={sortModal} onClose={() => setSortModal(false)}>
+      <Text className="text-fg text-lg font-bold mb-2">Trier par</Text>
+      {SORTS.map((option) => (
         <Pressable
-          className="bg-surface rounded-t-3xl px-5 pt-3 pb-9 gap-1"
-          onPress={(event) => event.stopPropagation()}
+          key={option.value}
+          onPress={() => {
+            setSort(option.value);
+            setSortModal(false);
+          }}
+          className="flex-row items-center justify-between py-3 border-b border-line/50"
         >
-          <View className="self-center w-10 h-1 rounded-full bg-surface-light mb-2" />
-          <Text className="text-fg text-lg font-bold mb-2">Trier par</Text>
-          {SORTS.map((option) => (
-            <Pressable
-              key={option.value}
-              onPress={() => {
-                setSort(option.value);
-                setSortModal(false);
-              }}
-              className="flex-row items-center justify-between py-3 border-b border-line/50"
-            >
-              <Text
-                className={`text-[15px] ${
-                  sort === option.value
-                    ? 'text-accent font-bold'
-                    : 'text-fg font-medium'
-                }`}
-              >
-                {option.label}
-              </Text>
-              {sort === option.value ? (
-                <Ionicons name="checkmark" size={20} color={colors.accent} />
-              ) : null}
-            </Pressable>
-          ))}
+          <Text
+            className={`text-[15px] ${
+              sort === option.value
+                ? 'text-accent font-bold'
+                : 'text-fg font-medium'
+            }`}
+          >
+            {option.label}
+          </Text>
+          {sort === option.value ? (
+            <Ionicons name="checkmark" size={20} color={colors.accent} />
+          ) : null}
         </Pressable>
-      </Pressable>
-    </Modal>
+      ))}
+    </BottomSheet>
   );
 
   const header = (
@@ -587,9 +576,9 @@ export default function LibraryScreen() {
         {filteredMovies.length ? (
           grid ? (
             <FlatList
-              key="movies-grid"
+              key={`movies-grid-${columns}`}
               data={filteredMovies}
-              numColumns={3}
+              numColumns={columns}
               keyExtractor={(item) => String(item.tmdb_id)}
               contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 32 }}
               refreshControl={refreshControl}
@@ -605,6 +594,7 @@ export default function LibraryScreen() {
                         ? 'Vu'
                         : undefined
                   }
+                  columns={columns}
                   onPress={() => router.push(`/movie/${item.tmdb_id}`)}
                   onLongPress={() => openMovieActions(item)}
                 />
@@ -678,16 +668,20 @@ export default function LibraryScreen() {
       {filteredShows.length || staleFooter ? (
         grid ? (
           <FlatList
-            key="shows-grid"
+            key={`shows-grid-${columns}`}
             data={filteredShows}
-            numColumns={3}
+            numColumns={columns}
             keyExtractor={(item: TrackedShow) => String(item.tmdb_id)}
             contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 32 }}
             refreshControl={refreshControl}
             ListHeaderComponent={showsHeader}
             ListFooterComponent={staleFooter}
             renderItem={({ item }) => (
-              <ShowGridCard show={item} allWatched={watched.data ?? []} />
+              <ShowGridCard
+                show={item}
+                allWatched={watched.data ?? []}
+                columns={columns}
+              />
             )}
           />
         ) : (
