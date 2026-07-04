@@ -43,7 +43,7 @@ supabase functions deploy pair-device
 
 ## Installation
 
-1. Copier `service.popcornlog-1.1.0.zip` sur l'appareil Kodi.
+1. Copier `service.popcornlog-1.1.3.zip` sur l'appareil Kodi.
 2. Kodi → **Paramètres → Extensions → Installer depuis un fichier zip**
    (autoriser les « sources inconnues » si demandé).
 3. Le code d'association s'affiche → le saisir dans l'app (10 min max,
@@ -56,5 +56,5 @@ Compatible Kodi 20 (Nexus) et plus récent.
 ## Re-packager après modification
 
 ```bash
-cd kodi && zip -r service.popcornlog-1.1.0.zip service.popcornlog
+cd kodi && zip -r service.popcornlog-1.1.3.zip service.popcornlog
 ```

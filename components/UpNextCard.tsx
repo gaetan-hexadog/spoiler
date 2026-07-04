@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Animated, Image, Pressable, Text, View } from 'react-native';
 import {
   useMarkEpisode,
   useSeasonDetails,
   useShowDetails,
 } from '@/hooks/queries';
+import { useHoverScale } from '@/hooks/useHoverScale';
 import type { TrackedShow, WatchedEpisode } from '@/lib/db';
 import { isUpToDate, nextEpisode, watchedSetForShow } from '@/lib/progress';
 import { imageUrl } from '@/lib/tmdb';
@@ -36,6 +37,7 @@ export function UpNextCard({
     show.tmdb_id,
     details && next && !upToDate ? next.season : null
   );
+  const { scale, onHoverIn, onHoverOut } = useHoverScale(1.03);
 
   if (!details || !next || upToDate) return null;
 
@@ -50,9 +52,15 @@ export function UpNextCard({
   return (
     <Pressable
       onPress={() => router.push(`/show/${show.tmdb_id}?tab=episodes`)}
-      className="w-60 mr-3 rounded-2xl overflow-hidden bg-surface"
+      onHoverIn={onHoverIn}
+      onHoverOut={onHoverOut}
+      className="w-60 mr-3"
       style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
     >
+      <Animated.View
+        className="rounded-2xl overflow-hidden bg-surface"
+        style={{ transform: [{ scale }] }}
+      >
       <View className="aspect-video">
         {image ? (
           <Image source={{ uri: image }} className="w-full h-full" />
@@ -99,6 +107,7 @@ export function UpNextCard({
           <Ionicons name="checkmark" size={20} color={colors.text} />
         </Pressable>
       </View>
+      </Animated.View>
     </Pressable>
   );
 }

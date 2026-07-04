@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Animated, Image, Pressable, Text, View } from 'react-native';
 import { useActionSheet } from '@/components/ActionSheet';
+import { useHoverScale } from '@/hooks/useHoverScale';
 import { useShowQuickActions } from '@/hooks/useShowQuickActions';
 import { useShowDetails } from '@/hooks/queries';
 import { useAutoShowStatus } from '@/hooks/useAutoShowStatus';
@@ -47,11 +48,14 @@ export function ShowGridCard({
     : 0;
 
   const uri = imageUrl(show.poster_path, 'w342');
+  const { scale, onHoverIn, onHoverOut } = useHoverScale();
 
   return (
     <Pressable
       onPress={() => router.push(`/show/${show.tmdb_id}`)}
       onLongPress={() => quickActions(show, upToDate ? null : next)}
+      onHoverIn={onHoverIn}
+      onHoverOut={onHoverOut}
       className="m-1.5 mb-3"
       style={({ pressed }) => [
         { flex: 1 / columns },
@@ -59,6 +63,7 @@ export function ShowGridCard({
       ]}
     >
       {sheet}
+      <Animated.View style={{ transform: [{ scale }] }}>
       <View className="aspect-[2/3] rounded-xl bg-surface overflow-hidden">
         {uri ? (
           <Image source={{ uri }} className="w-full h-full" />
@@ -106,6 +111,7 @@ export function ShowGridCard({
       <Text className="text-fg text-xs font-semibold mt-1" numberOfLines={1}>
         {show.name}
       </Text>
+      </Animated.View>
     </Pressable>
   );
 }

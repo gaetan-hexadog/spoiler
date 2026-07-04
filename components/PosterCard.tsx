@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Animated, Image, Pressable, Text, View } from 'react-native';
+import { useHoverScale } from '@/hooks/useHoverScale';
 import { imageUrl } from '@/lib/tmdb';
 
 /**
@@ -24,16 +25,20 @@ export function PosterCard({
   onLongPress?: () => void;
 }) {
   const uri = imageUrl(posterPath, 'w342');
+  const { scale, onHoverIn, onHoverOut } = useHoverScale();
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
+      onHoverIn={onHoverIn}
+      onHoverOut={onHoverOut}
       className="m-1.5 mb-3"
       style={({ pressed }) => [
         width ? { width } : { flex: 1 / columns },
         pressed && { opacity: 0.7 },
       ]}
     >
+      <Animated.View style={{ transform: [{ scale }] }}>
       {uri ? (
         <Image source={{ uri }} className="aspect-[2/3] rounded-xl bg-surface" />
       ) : (
@@ -51,6 +56,7 @@ export function PosterCard({
           {subtitle}
         </Text>
       ) : null}
+      </Animated.View>
     </Pressable>
   );
 }
