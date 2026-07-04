@@ -221,7 +221,10 @@ export default function CalendarScreen() {
   return (
     <Screen>
       <View className="flex-1 w-full max-w-[760px] self-center">
-      <View className="flex-row bg-surface rounded-lg p-[3px] mx-4 mt-2 mb-1">
+      <Text className="text-fg text-2xl font-extrabold px-4 pt-3">
+        Calendrier
+      </Text>
+      <View className="flex-row bg-surface rounded-lg p-[3px] mx-4 mt-3 mb-1">
         {(
           [
             ['upcoming', 'À venir'],

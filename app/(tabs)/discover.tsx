@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Carousel } from '@/components/Carousel';
 import { PosterCard } from '@/components/PosterCard';
@@ -64,7 +64,8 @@ export default function DiscoverScreen() {
 
   return (
     <Screen>
-      <View className="px-4 pt-3 pb-4">
+      <View className="px-4 pt-3 pb-4 gap-3">
+        <Text className="text-fg text-2xl font-extrabold">Découvrir</Text>
         <View className="relative justify-center">
           <Input
             placeholder="Rechercher une série ou un film…"

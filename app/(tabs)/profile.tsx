@@ -236,6 +236,7 @@ export default function ProfileScreen() {
           alignSelf: 'center',
         }}
       >
+        <Text className="text-fg text-2xl font-extrabold">Profil</Text>
         {/* Identité */}
         <View className="items-center gap-2 pt-2">
           <View className="w-20 h-20 rounded-full bg-accent items-center justify-center">

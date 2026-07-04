@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
-import { useNavigation, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -93,7 +93,6 @@ function Chip({
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const [segment, setSegment] = usePersistedState<Segment>('segment', 'shows');
   const [showFilter, setShowFilter] = useState<ShowFilter>('watching');
   const [movieFilter, setMovieFilter] = useState<MovieStatus>('watchlist');
@@ -104,50 +103,6 @@ export default function LibraryScreen() {
   const [search, setSearch] = useState('');
   const searching = searchOpen && search.trim().length > 0;
   const columns = useGridColumns();
-
-  // Actions intégrées au header natif : recherche + tri + bascule liste/grille.
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <View className="flex-row gap-2 pr-4">
-          <Pressable
-            onPress={() => {
-              if (searchOpen) setSearch('');
-              setSearchOpen(!searchOpen);
-            }}
-            hitSlop={6}
-            className={`w-9 h-9 rounded-lg items-center justify-center ${
-              searchOpen ? 'bg-accent' : 'bg-surface'
-            }`}
-          >
-            <Ionicons
-              name={searchOpen ? 'close' : 'search'}
-              size={16}
-              color={searchOpen ? colors.accentText : colors.text}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => setSortModal(true)}
-            hitSlop={6}
-            className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
-          >
-            <Ionicons name="funnel-outline" size={16} color={colors.text} />
-          </Pressable>
-          <Pressable
-            onPress={() => setGrid(!grid)}
-            hitSlop={6}
-            className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
-          >
-            <Ionicons
-              name={grid ? 'list' : 'grid'}
-              size={16}
-              color={colors.text}
-            />
-          </Pressable>
-        </View>
-      ),
-    });
-  }, [navigation, grid, searchOpen, setGrid]);
 
   const shows = useTrackedShows();
   const watched = useAllWatchedEpisodes();
@@ -484,7 +439,46 @@ export default function LibraryScreen() {
   );
 
   const header = (
-    <View className="gap-3 px-4 pt-2 pb-3">
+    <View className="gap-3 px-4 pt-3 pb-3">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-fg text-2xl font-extrabold">Ma liste</Text>
+        <View className="flex-row gap-2">
+          <Pressable
+            onPress={() => {
+              if (searchOpen) setSearch('');
+              setSearchOpen(!searchOpen);
+            }}
+            hitSlop={6}
+            className={`w-9 h-9 rounded-lg items-center justify-center ${
+              searchOpen ? 'bg-accent' : 'bg-surface'
+            }`}
+          >
+            <Ionicons
+              name={searchOpen ? 'close' : 'search'}
+              size={16}
+              color={searchOpen ? colors.accentText : colors.text}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => setSortModal(true)}
+            hitSlop={6}
+            className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
+          >
+            <Ionicons name="funnel-outline" size={16} color={colors.text} />
+          </Pressable>
+          <Pressable
+            onPress={() => setGrid(!grid)}
+            hitSlop={6}
+            className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
+          >
+            <Ionicons
+              name={grid ? 'list' : 'grid'}
+              size={16}
+              color={colors.text}
+            />
+          </Pressable>
+        </View>
+      </View>
       <View className="flex-row items-center gap-2">
         <View className="flex-1 flex-row bg-surface rounded-lg p-[3px]">
           {(
