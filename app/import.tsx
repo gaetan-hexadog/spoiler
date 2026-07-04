@@ -33,7 +33,11 @@ export default function ImportScreen() {
 
     setRunning(true);
     try {
-      const content = await FileSystem.readAsStringAsync(picked.assets[0].uri);
+      const asset = picked.assets[0];
+      // Web : l'URI est un blob, FileSystem n'existe pas — on lit le File.
+      const content = asset.file
+        ? await asset.file.text()
+        : await FileSystem.readAsStringAsync(asset.uri);
       const { rows, skipped } = parseTvTimeCsv(content);
       const groups = groupByShow(rows);
       const result: ImportReport = { matched: [], unmatched: [], skipped };

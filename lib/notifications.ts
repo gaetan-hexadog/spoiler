@@ -1,10 +1,11 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// Expo Go (Android) ne supporte plus expo-notifications depuis le SDK 53 :
-// le module n'est chargé que dans un vrai build (APK / development build).
+// Expo Go (Android) ne supporte plus expo-notifications depuis le SDK 53,
+// et le web n'a pas de notifications planifiées : le module n'est chargé
+// que dans un vrai build natif (APK / development build).
 export const notificationsAvailable =
-  Constants.executionEnvironment !== 'storeClient';
+  Platform.OS !== 'web' && Constants.executionEnvironment !== 'storeClient';
 
 type NotificationsModule = typeof import('expo-notifications');
 
