@@ -84,7 +84,12 @@ class Service:
         return bool(setting('refresh_token') or (setting('email') and setting('password')))
 
     def pair(self, monitor):
-        """Affiche un code OTP et attend sa validation dans l'app Spoiler."""
+        """Affiche un code OTP et attend sa validation dans l'app Spoiler.
+
+        Tout est non bloquant pour l'interface : dialogue d'arrière-plan
+        uniquement (une modale ouverte par un service pendant le flux
+        d'installation peut faire planter Kodi).
+        """
         url, key = connection()
         if not url or not key:
             notify('Configuration Supabase manquante', error=True)
@@ -95,20 +100,23 @@ class Service:
             notify('Association impossible : {}'.format(error), error=True)
             return False
 
-        dialog = xbmcgui.DialogProgress()
+        log('code d’association: {}'.format(code))
+        dialog = xbmcgui.DialogProgressBG()
         dialog.create(
-            'Spoiler — Associer cet appareil',
-            'Code : [B]{}[/B]\n'
-            'Dans l’app Spoiler : Profil → Réglages → Associer un appareil Kodi.\n'
-            'Le code expire dans 10 minutes.'.format(code),
+            'Spoiler — code : {}'.format(code),
+            'App Spoiler → Profil → Associer un appareil Kodi',
         )
         elapsed = 0
         try:
             while elapsed < PAIRING_TIMEOUT_SECONDS:
-                if dialog.iscanceled() or monitor.waitForAbort(PAIRING_POLL_SECONDS):
+                if monitor.waitForAbort(PAIRING_POLL_SECONDS):
                     return False
                 elapsed += PAIRING_POLL_SECONDS
-                dialog.update(int(elapsed * 100 / PAIRING_TIMEOUT_SECONDS))
+                dialog.update(
+                    int(elapsed * 100 / PAIRING_TIMEOUT_SECONDS),
+                    'Spoiler — code : {}'.format(code),
+                    'App Spoiler → Profil → Associer un appareil Kodi',
+                )
                 try:
                     result = rpc(url, key, 'poll_device_link', {'p_code': code})
                 except SpoilerError:
@@ -128,7 +136,7 @@ class Service:
             return False
         finally:
             dialog.close()
-        notify('Code expiré — relance Kodi pour réessayer', error=True)
+        notify('Code expiré — redémarre Kodi pour réessayer', error=True)
         return False
 
     # --- Configuration ---------------------------------------------------------
@@ -319,10 +327,20 @@ def main():
     log('démarrage')
     monitor = xbmc.Monitor()
     service = Service()
-    if not service.is_configured():
-        service.pair(monitor)
+    # Délai de grâce : ne rien afficher pendant que Kodi finit d'installer
+    # l'extension ou de démarrer.
+    if monitor.waitForAbort(8):
+        return
+    try:
+        if not service.is_configured():
+            service.pair(monitor)
+    except Exception as error:  # noqa: BLE001 — jamais faire tomber Kodi
+        log('pairing: {}'.format(error), xbmc.LOGERROR)
     while not monitor.abortRequested():
-        service.poll()
+        try:
+            service.poll()
+        except Exception as error:  # noqa: BLE001
+            log('poll: {}'.format(error), xbmc.LOGERROR)
         if monitor.waitForAbort(POLL_SECONDS):
             break
     service.flush()
