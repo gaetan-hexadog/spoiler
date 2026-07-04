@@ -27,9 +27,20 @@ function useTmdbInfinite<T>(
     enabled,
     staleTime: 1000 * 60 * 30,
   });
+  const items = (() => {
+    const flat = query.data?.pages.flatMap((page) => page.results) ?? [];
+    // TMDB renvoie parfois le même titre sur plusieurs pages → dédup par id.
+    const seen = new Set<number>();
+    return flat.filter((item) => {
+      const id = (item as { id: number }).id;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  })();
   return {
     ...query,
-    items: query.data?.pages.flatMap((page) => page.results) ?? [],
+    items,
     loadMore: () => {
       if (query.hasNextPage && !query.isFetchingNextPage) {
         query.fetchNextPage();

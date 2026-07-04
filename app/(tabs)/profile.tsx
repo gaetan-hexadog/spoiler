@@ -19,6 +19,7 @@ import {
   useProfile,
   useTrackedShows,
 } from '@/hooks/queries';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import {
   clearEpisodeNotifications,
@@ -102,6 +103,7 @@ export default function ProfileScreen() {
   );
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const { show: openSheet, sheet } = useActionSheet();
+  const isDesktop = useBreakpoint() === 'desktop';
 
   const checkForUpdate = async () => {
     if (!Updates.isEnabled) {
@@ -232,30 +234,34 @@ export default function ProfileScreen() {
           padding: 16,
           gap: 20,
           width: '100%',
-          maxWidth: 720,
+          maxWidth: isDesktop ? 1000 : 720,
           alignSelf: 'center',
         }}
       >
         <Text className="text-fg text-2xl font-extrabold">Profil</Text>
         {/* Identité */}
-        <View className="items-center gap-2 pt-2">
+        <View
+          className={`gap-2 pt-2 ${isDesktop ? 'flex-row items-center gap-4' : 'items-center'}`}
+        >
           <View className="w-20 h-20 rounded-full bg-accent items-center justify-center">
             <Text className="text-accent-fg text-3xl font-extrabold">
               {initial}
             </Text>
           </View>
-          <Text className="text-fg text-xl font-extrabold">{displayName}</Text>
-          <Text className="text-muted text-[13px]">{email}</Text>
+          <View className={isDesktop ? '' : 'items-center'}>
+            <Text className="text-fg text-xl font-extrabold">{displayName}</Text>
+            <Text className="text-muted text-[13px]">{email}</Text>
+          </View>
         </View>
 
         {/* Statistiques */}
-        <View className="gap-3">
-          <View className="flex-row gap-3">
+        <View className={isDesktop ? 'flex-row gap-3' : 'gap-3'}>
+          <View className="flex-row gap-3 flex-1">
             <Stat value={stats.shows} label="Séries" />
             <Stat value={stats.episodes} label="Épisodes vus" />
             <Stat value={stats.moviesWatched} label="Films vus" />
           </View>
-          <View className="flex-row gap-3">
+          <View className="flex-row gap-3 flex-1">
             <Stat
               value={`≈ ${formatDuration(stats.totalMinutes)}`}
               label="Devant l'écran"
@@ -265,9 +271,10 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <View className={isDesktop ? 'flex-row gap-6 items-start' : 'gap-5'}>
         {/* Top séries */}
         {stats.topShows.length ? (
-          <View className="gap-2">
+          <View className={`gap-2 ${isDesktop ? 'flex-[1.4]' : ''}`}>
             <Text className="text-fg text-lg font-bold">Top séries</Text>
             {stats.topShows.map((entry, index) => {
               const uri = imageUrl(entry.show?.poster_path, 'w92');
@@ -305,7 +312,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Réglages */}
-        <View className="gap-2">
+        <View className={`gap-2 ${isDesktop ? 'flex-1' : ''}`}>
           <Text className="text-fg text-lg font-bold">Réglages</Text>
           <SettingRow
             icon="notifications"
@@ -349,6 +356,7 @@ export default function ProfileScreen() {
             danger
             onPress={() => supabase.auth.signOut()}
           />
+        </View>
         </View>
 
         <Muted>

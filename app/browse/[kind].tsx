@@ -1,11 +1,13 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
-import { PosterCard } from '@/components/PosterCard';
+import { PosterCard, type LibraryBadge } from '@/components/PosterCard';
 import { EmptyState, Loading, Screen } from '@/components/ui';
 import {
+  useMovies,
   useNowPlayingMovies,
   useTopRatedShows,
+  useTrackedShows,
   useTrendingMovies,
   useTrendingShows,
 } from '@/hooks/queries';
@@ -29,6 +31,32 @@ export default function BrowseScreen() {
   const trendingMovies = useTrendingMovies();
   const topRatedShows = useTopRatedShows();
   const nowPlaying = useNowPlayingMovies();
+
+  const tracked = useTrackedShows();
+  const movies = useMovies();
+  const showBadges = useMemo(() => {
+    const map = new Map<number, LibraryBadge>();
+    for (const show of tracked.data ?? []) {
+      map.set(
+        show.tmdb_id,
+        show.status === 'completed'
+          ? 'watched'
+          : show.status === 'stopped'
+            ? 'stopped'
+            : show.status === 'planned'
+              ? 'planned'
+              : 'watching'
+      );
+    }
+    return map;
+  }, [tracked.data]);
+  const movieBadges = useMemo(() => {
+    const map = new Map<number, LibraryBadge>();
+    for (const movie of movies.data ?? []) {
+      map.set(movie.tmdb_id, movie.status === 'watched' ? 'watched' : 'planned');
+    }
+    return map;
+  }, [movies.data]);
 
   const isShowKind = kind === 'trending-tv' || kind === 'top-rated-tv';
   const source =
@@ -72,6 +100,7 @@ export default function BrowseScreen() {
                   posterPath={show.poster_path}
                   subtitle={show.first_air_date?.slice(0, 4)}
                   columns={columns}
+                  badge={showBadges.get(show.id)}
                   onPress={() => router.push(`/show/${show.id}`)}
                 />
               );
@@ -83,6 +112,7 @@ export default function BrowseScreen() {
                 posterPath={movie.poster_path}
                 subtitle={movie.release_date?.slice(0, 4)}
                 columns={columns}
+                badge={movieBadges.get(movie.id)}
                 onPress={() => router.push(`/movie/${movie.id}`)}
               />
             );

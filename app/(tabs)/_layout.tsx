@@ -56,13 +56,13 @@ const TabButton = forwardRef<ViewType, TabButtonProps>(
           }`}
         >
           <Ionicons name={iconName} size={20} color={color} />
-          <Text
+          {/* <Text
             className={`text-[15px] font-bold ${
               isFocused ? 'text-accent' : 'text-muted'
             }`}
           >
             {label}
-          </Text>
+          </Text> */}
         </Pressable>
       );
     }
@@ -133,7 +133,7 @@ export default function TabsLayout() {
             flexDirection: 'column',
             justifyContent: 'flex-start',
             alignItems: 'stretch',
-            width: breakpoint === 'desktop' ? 220 : 72,
+            width: breakpoint === 'desktop' ? 72 : 72,
             paddingTop: insets.top + 20,
             paddingHorizontal: 12,
             gap: 4,
@@ -151,9 +151,9 @@ export default function TabsLayout() {
               style={{ width: 34, height: 22 }}
               resizeMode="contain"
             />
-            {breakpoint === 'desktop' ? (
+            {/* {breakpoint === 'desktop' ? (
               <Text className="text-fg text-lg font-extrabold">PopcornLog</Text>
-            ) : null}
+            ) : null} */}
           </View>
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
