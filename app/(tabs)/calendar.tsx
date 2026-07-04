@@ -220,6 +220,7 @@ export default function CalendarScreen() {
 
   return (
     <Screen>
+      <View className="flex-1 w-full max-w-[760px] self-center">
       <View className="flex-row bg-surface rounded-lg p-[3px] mx-4 mt-2 mb-1">
         {(
           [
@@ -313,6 +314,7 @@ export default function CalendarScreen() {
           }
         />
       )}
+      </View>
     </Screen>
   );
 }

@@ -432,7 +432,11 @@ export default function ShowDetailScreen() {
             ) : null}
           </View>
         ) : (
-          <View className="gap-4 pb-4">
+          <View
+            className={`gap-4 pb-4 ${
+              isDesktop ? 'w-full max-w-[800px] self-center' : ''
+            }`}
+          >
             <View className="px-4 gap-1.5">
               <Text className="text-muted text-[13px]">
                 {seen} / {total} épisodes vus

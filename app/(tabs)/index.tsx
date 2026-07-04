@@ -605,7 +605,12 @@ export default function LibraryScreen() {
               key="movies-list"
               data={filteredMovies}
               keyExtractor={(item) => String(item.tmdb_id)}
-              contentContainerStyle={{ paddingBottom: 32 }}
+              contentContainerStyle={{
+                paddingBottom: 32,
+                width: '100%',
+                maxWidth: 760,
+                alignSelf: 'center',
+              }}
               refreshControl={refreshControl}
               ListHeaderComponent={listTitle(moviesTitle)}
               renderItem={({ item }) => (
@@ -689,7 +694,12 @@ export default function LibraryScreen() {
             key="shows-list"
             data={filteredShows}
             keyExtractor={(item: TrackedShow) => String(item.tmdb_id)}
-            contentContainerStyle={{ paddingBottom: 32 }}
+            contentContainerStyle={{
+              paddingBottom: 32,
+              width: '100%',
+              maxWidth: 760,
+              alignSelf: 'center',
+            }}
             refreshControl={refreshControl}
             ListHeaderComponent={showsHeader}
             ListFooterComponent={staleFooter}

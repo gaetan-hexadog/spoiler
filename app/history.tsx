@@ -132,7 +132,12 @@ export default function HistoryScreen() {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.key}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{
+          paddingBottom: 32,
+          width: '100%',
+          maxWidth: 760,
+          alignSelf: 'center',
+        }}
         initialNumToRender={20}
         onEndReached={() => {
           if (hasMore) setLimit((current) => current + PAGE_SIZE);

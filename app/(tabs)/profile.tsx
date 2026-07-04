@@ -227,7 +227,15 @@ export default function ProfileScreen() {
   return (
     <Screen>
       {sheet}
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }}>
+      <ScrollView
+        contentContainerStyle={{
+          padding: 16,
+          gap: 20,
+          width: '100%',
+          maxWidth: 720,
+          alignSelf: 'center',
+        }}
+      >
         {/* Identité */}
         <View className="items-center gap-2 pt-2">
           <View className="w-20 h-20 rounded-full bg-accent items-center justify-center">
