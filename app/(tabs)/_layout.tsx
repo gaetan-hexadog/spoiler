@@ -79,10 +79,11 @@ export default function TabsLayout() {
   return (
     <Tabs style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Le TabSlot headless (expo-router/ui) ne pose pas de safe-area : on
-          réserve l'inset haut nous-mêmes (env(safe-area-inset-top) → 0 hors
-          appareil à encoche). Sans ça, le contenu des onglets passe sous la
-          status bar sur mobile. */}
-      <View className="flex-1 pt-safe">
+          réserve l'inset haut nous-mêmes via les insets de l'appareil (même
+          source que la barre du bas). Sans ça, le contenu des onglets passe
+          sous la status bar sur mobile. (Uniwind pt-safe ne marche pas ici :
+          son runtime rt.insets n'est jamais alimenté par l'app.) */}
+      <View className="flex-1" style={{ paddingTop: insets.top }}>
         <TabSlot style={{ flex: 1 }} />
       </View>
       {/* Desktop/tablette : la sidebar est fournie par le layout racine, la
