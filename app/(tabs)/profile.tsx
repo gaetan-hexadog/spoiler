@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useActionSheet } from '@/components/ActionSheet';
 import { Muted, Screen } from '@/components/ui';
 import {
   useAllWatchedEpisodes,
@@ -101,32 +101,49 @@ export default function ProfileScreen() {
     false
   );
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const { show: openSheet, sheet } = useActionSheet();
 
   const checkForUpdate = async () => {
     if (!Updates.isEnabled) {
-      Alert.alert(
-        'Indisponible',
-        'Les mises à jour OTA ne fonctionnent que dans l’app installée (APK).'
-      );
+      openSheet({
+        title: 'Indisponible',
+        message:
+          'Les mises à jour OTA ne fonctionnent que dans l’app installée (APK).',
+        actions: [{ label: 'OK', onPress: () => {} }],
+      });
       return;
     }
     setCheckingUpdate(true);
     try {
       const result = await Updates.checkForUpdateAsync();
       if (!result.isAvailable) {
-        Alert.alert('À jour ✓', 'Tu as déjà la dernière version.');
+        openSheet({
+          title: 'À jour ✓',
+          message: 'Tu as déjà la dernière version.',
+          actions: [{ label: 'OK', onPress: () => {} }],
+        });
         return;
       }
       await Updates.fetchUpdateAsync();
-      Alert.alert('Mise à jour prête', 'Redémarrer maintenant ?', [
-        { text: 'Plus tard', style: 'cancel' },
-        { text: 'Redémarrer', onPress: () => Updates.reloadAsync() },
-      ]);
+      openSheet({
+        title: 'Mise à jour prête',
+        message: 'Redémarrer maintenant ?',
+        actions: [
+          {
+            label: 'Redémarrer',
+            variant: 'primary',
+            onPress: () => Updates.reloadAsync(),
+          },
+          { label: 'Plus tard', onPress: () => {} },
+        ],
+      });
     } catch (error) {
-      Alert.alert(
-        'Erreur',
-        error instanceof Error ? error.message : 'Vérification impossible.'
-      );
+      openSheet({
+        title: 'Erreur',
+        message:
+          error instanceof Error ? error.message : 'Vérification impossible.',
+        actions: [{ label: 'OK', onPress: () => {} }],
+      });
     } finally {
       setCheckingUpdate(false);
     }
@@ -182,18 +199,22 @@ export default function ProfileScreen() {
   const toggleNotifications = async (value: boolean) => {
     if (value) {
       if (!notificationsAvailable) {
-        Alert.alert(
-          'Indisponible dans Expo Go',
-          "Les notifications nécessitent l'app installée (APK). Elles s'activeront automatiquement dans le build EAS."
-        );
+        openSheet({
+          title: 'Indisponible ici',
+          message:
+            "Les notifications nécessitent l'app installée (APK Android).",
+          actions: [{ label: 'OK', onPress: () => {} }],
+        });
         return;
       }
       const granted = await ensureNotificationPermission();
       if (!granted) {
-        Alert.alert(
-          'Notifications refusées',
-          'Autorise les notifications pour PopcornLog dans les réglages Android.'
-        );
+        openSheet({
+          title: 'Notifications refusées',
+          message:
+            'Autorise les notifications pour PopcornLog dans les réglages Android.',
+          actions: [{ label: 'OK', onPress: () => {} }],
+        });
         return;
       }
       setNotifEnabled(true);
@@ -205,6 +226,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
+      {sheet}
       <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }}>
         {/* Identité */}
         <View className="items-center gap-2 pt-2">

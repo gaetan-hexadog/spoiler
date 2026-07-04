@@ -34,6 +34,7 @@ import {
   useUntrackShow,
 } from '@/hooks/queries';
 import { useAutoShowStatus } from '@/hooks/useAutoShowStatus';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { ShowStatus } from '@/lib/db';
 import {
   episodeKey,
@@ -65,6 +66,7 @@ export default function ShowDetailScreen() {
   );
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const { show: openSheet, sheet } = useActionSheet();
+  const isDesktop = useBreakpoint() === 'desktop';
 
   const details = useShowDetails(showId);
   const tracked = useTrackedShows();
@@ -385,22 +387,31 @@ export default function ShowDetailScreen() {
 
         {tab === 'about' ? (
           <View className="gap-6 pb-4">
-            {show.overview ? (
-              <Text className="text-fg text-sm leading-[21px] opacity-90 px-4">
-                {show.overview}
-              </Text>
-            ) : null}
-            {trackedShow ? (
-              <View className="px-4">
-                <RatingStars
-                  value={trackedShow.rating}
-                  onChange={(rating) =>
-                    setRating.mutate({ tmdbId: showId, rating })
-                  }
+            {/* Desktop : synopsis + note à gauche, plateformes à droite. */}
+            <View className={isDesktop ? 'flex-row gap-10 items-start' : 'gap-6'}>
+              <View className={`gap-6 ${isDesktop ? 'flex-[3]' : ''}`}>
+                {show.overview ? (
+                  <Text className="text-fg text-sm leading-[21px] opacity-90 px-4">
+                    {show.overview}
+                  </Text>
+                ) : null}
+                {trackedShow ? (
+                  <View className="px-4">
+                    <RatingStars
+                      value={trackedShow.rating}
+                      onChange={(rating) =>
+                        setRating.mutate({ tmdbId: showId, rating })
+                      }
+                    />
+                  </View>
+                ) : null}
+              </View>
+              <View className={`px-4 ${isDesktop ? 'flex-[2]' : ''}`}>
+                <WhereToWatch
+                  providers={show['watch/providers']?.results?.FR}
                 />
               </View>
-            ) : null}
-            <WhereToWatch providers={show['watch/providers']?.results?.FR} />
+            </View>
             {show.credits?.cast?.length ? (
               <CastRow cast={show.credits.cast} />
             ) : null}

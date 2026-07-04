@@ -44,7 +44,7 @@ export default function PairDeviceScreen() {
 
   return (
     <Screen>
-      <View className="p-6 gap-5">
+      <View className="p-6 gap-5 w-full max-w-[420px] self-center">
         {done ? (
           <View className="items-center gap-3 pt-10">
             <Ionicons name="checkmark-circle" size={64} color={colors.success} />

@@ -21,6 +21,7 @@ import {
   useSetMovieRating,
   useSetMovieStatus,
 } from '@/hooks/queries';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { findTrailer, imageUrl } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
 
@@ -30,6 +31,7 @@ export default function MovieDetailScreen() {
 
   const router = useRouter();
   const { show: openSheet, sheet } = useActionSheet();
+  const isDesktop = useBreakpoint() === 'desktop';
   const details = useMovieDetails(movieId);
   const movies = useMovies();
   const addMovie = useAddMovie();
@@ -171,15 +173,18 @@ export default function MovieDetailScreen() {
         </View>
 
         <View className="p-4 gap-4">
-          {movie.overview ? (
-            <Text className="text-fg text-sm leading-[21px] opacity-90">
-              {movie.overview}
-            </Text>
-          ) : null}
+          {/* Desktop : synopsis + actions à gauche, plateformes à droite. */}
+          <View className={isDesktop ? 'flex-row gap-10 items-start' : 'gap-4'}>
+            <View className={`gap-4 ${isDesktop ? 'flex-[3]' : ''}`}>
+              {movie.overview ? (
+                <Text className="text-fg text-sm leading-[21px] opacity-90">
+                  {movie.overview}
+                </Text>
+              ) : null}
 
-          {/* Ajout/retrait de la watchlist = bookmark du header. Ici, on ne
-              garde que les actions de statut que le bookmark ne couvre pas. */}
-          <View className="gap-3">
+              {/* Ajout/retrait de la watchlist = bookmark du header. Ici, on ne
+                  garde que les actions de statut que le bookmark ne couvre pas. */}
+              <View className="gap-3">
             {!saved ? (
               <Button
                 title="✓ Je l'ai déjà vu"
@@ -222,11 +227,15 @@ export default function MovieDetailScreen() {
                 />
               </>
             )}
+              </View>
+            </View>
+            <View className={isDesktop ? 'flex-[2]' : ''}>
+              <WhereToWatch providers={movie['watch/providers']?.results?.FR} />
+            </View>
           </View>
         </View>
 
-        <View className="gap-6">
-          <WhereToWatch providers={movie['watch/providers']?.results?.FR} />
+        <View className="gap-6 pb-4">
           {movie.credits?.cast?.length ? (
             <CastRow cast={movie.credits.cast} />
           ) : null}

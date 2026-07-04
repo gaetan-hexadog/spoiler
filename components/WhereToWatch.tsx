@@ -71,7 +71,7 @@ export function WhereToWatch({
     ) : null;
 
   return (
-    <View className="px-4 gap-2.5">
+    <View className="gap-2.5">
       <Text className="text-fg text-lg font-bold">Où regarder</Text>
       {logoRow(streaming, 'Streaming')}
       {logoRow(rentBuy, 'Location / Achat')}
