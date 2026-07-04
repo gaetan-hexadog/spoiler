@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -26,8 +26,6 @@ import {
 } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
 
-type Mode = 'upcoming' | 'recent';
-
 interface CalendarItem {
   showId: number;
   showName: string;
@@ -38,8 +36,6 @@ interface CalendarItem {
   airDate: string;
   watched: boolean;
 }
-
-const RECENT_DAYS = 14;
 
 /** YYYY-MM-DD en date locale (évite le décalage UTC de toISOString). */
 function toLocalIso(d: Date): string {
@@ -94,9 +90,9 @@ const WEEKDAYS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 
 export default function CalendarScreen() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>('upcoming');
   const [weekOffset, setWeekOffset] = useState(0);
   const isDesktop = useBreakpoint() === 'desktop';
+  const listRef = useRef<SectionList<CalendarItem>>(null);
   const shows = useTrackedShows();
   const watchedRows = useAllWatchedEpisodes();
 
@@ -201,32 +197,37 @@ export default function CalendarScreen() {
     return items;
   }, [detailQueries, seasonQueries, seasonTargets, activeShows, watchedRows.data]);
 
-  const sections = useMemo(() => {
+  // Fenêtre pertinente autour d'aujourd'hui : évite les finales anciennes
+  // (last_episode_to_air des séries terminées il y a des années).
+  const boundedItems = useMemo(() => {
+    const floor = addDays(isoToday(), -14);
+    const ceil = addDays(isoToday(), 180);
+    return items.filter((i) => i.airDate >= floor && i.airDate <= ceil);
+  }, [items]);
+
+  // Calendrier continu : passé + futur, une seule timeline chronologique.
+  const { sections, todayIndex } = useMemo(() => {
     const today = isoToday();
-    const recentFloor = new Date();
-    recentFloor.setDate(recentFloor.getDate() - RECENT_DAYS);
-    const recentFloorIso = recentFloor.toISOString().slice(0, 10);
-
-    const filtered = items.filter((item) =>
-      mode === 'upcoming'
-        ? item.airDate >= today
-        : item.airDate < today && item.airDate >= recentFloorIso
+    const sorted = [...boundedItems].sort(
+      (a, b) =>
+        a.airDate.localeCompare(b.airDate) ||
+        a.showName.localeCompare(b.showName)
     );
-    filtered.sort((a, b) =>
-      mode === 'upcoming'
-        ? a.airDate.localeCompare(b.airDate) || a.showName.localeCompare(b.showName)
-        : b.airDate.localeCompare(a.airDate) || a.showName.localeCompare(b.showName)
-    );
-
-    const grouped: { title: string; data: CalendarItem[] }[] = [];
-    for (const item of filtered) {
-      const title = dateHeader(item.airDate);
+    const grouped: { title: string; iso: string; data: CalendarItem[] }[] = [];
+    for (const item of sorted) {
       const last = grouped[grouped.length - 1];
-      if (last && last.title === title) last.data.push(item);
-      else grouped.push({ title, data: [item] });
+      if (last && last.iso === item.airDate) last.data.push(item);
+      else
+        grouped.push({
+          title: dateHeader(item.airDate),
+          iso: item.airDate,
+          data: [item],
+        });
     }
-    return grouped;
-  }, [items, mode]);
+    let idx = grouped.findIndex((s) => s.iso >= today);
+    if (idx < 0) idx = Math.max(0, grouped.length - 1);
+    return { sections: grouped, todayIndex: idx };
+  }, [items]);
 
   // Notifications de diffusion : replanifiées à chaque passage ici.
   const [notifEnabled] = usePersistedState('notifications', false);
@@ -244,6 +245,20 @@ export default function CalendarScreen() {
         }))
     ).catch(() => {});
   }, [notifEnabled, loading, items]);
+
+  // Agenda mobile : positionner la vue sur aujourd'hui à l'ouverture.
+  useEffect(() => {
+    if (isDesktop || loading || !sections.length) return;
+    const timer = setTimeout(() => {
+      listRef.current?.scrollToLocation({
+        sectionIndex: todayIndex,
+        itemIndex: 0,
+        viewPosition: 0,
+        animated: false,
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [isDesktop, loading, sections.length, todayIndex]);
 
   // Grille semaine (desktop) : les épisodes de la semaine affichée, par jour.
   const start = weekStartIso(weekOffset);
@@ -270,54 +285,30 @@ export default function CalendarScreen() {
     );
   }
 
-  const useWeekGrid = isDesktop && mode === 'upcoming';
+  const useWeekGrid = isDesktop;
 
   return (
     <Screen>
       <View
         className={`flex-1 w-full self-center ${useWeekGrid ? '' : 'max-w-[760px]'}`}
       >
-      <View className="flex-row items-center justify-between px-4 pt-3">
+      <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
         <Text className="text-fg text-2xl font-extrabold">Calendrier</Text>
         {useWeekGrid ? (
           <View className="flex-row items-center gap-3">
             <Pressable onPress={() => setWeekOffset((o) => o - 1)} hitSlop={8}>
               <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
             </Pressable>
-            <Text className="text-fg text-sm font-semibold min-w-[110px] text-center">
-              {weekOffset === 0 ? 'Cette semaine' : weekLabel}
-            </Text>
+            <Pressable onPress={() => setWeekOffset(0)}>
+              <Text className="text-fg text-sm font-semibold min-w-[110px] text-center">
+                {weekOffset === 0 ? 'Cette semaine' : weekLabel}
+              </Text>
+            </Pressable>
             <Pressable onPress={() => setWeekOffset((o) => o + 1)} hitSlop={8}>
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </Pressable>
           </View>
         ) : null}
-      </View>
-      <View
-        className={`flex-row bg-surface rounded-lg p-[3px] mt-3 mb-1 ${isDesktop ? 'self-start mx-4' : 'mx-4'}`}
-      >
-        {(
-          [
-            ['upcoming', 'À venir'],
-            ['recent', 'Sortis récemment'],
-          ] as [Mode, string][]
-        ).map(([value, label]) => (
-          <Pressable
-            key={value}
-            onPress={() => setMode(value)}
-            className={`${isDesktop ? 'px-6' : 'flex-1'} py-2 rounded-md items-center ${
-              mode === value ? 'bg-accent' : ''
-            }`}
-          >
-            <Text
-              className={`font-semibold text-sm ${
-                mode === value ? 'text-accent-fg' : 'text-muted'
-              }`}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        ))}
       </View>
 
       {useWeekGrid ? (
@@ -383,18 +374,41 @@ export default function CalendarScreen() {
         </ScrollView>
       ) : sections.length ? (
         <SectionList
+          ref={listRef}
           sections={sections}
           keyExtractor={(item) =>
             `${item.showId}-${item.season}-${item.episode}`
           }
           contentContainerStyle={{ paddingBottom: 32 }}
-          renderSectionHeader={({ section }) => (
-            <Text className="text-accent text-[13px] font-bold px-4 pt-5 pb-2 capitalize">
-              {section.title}
-            </Text>
-          )}
+          onScrollToIndexFailed={({ highestMeasuredFrameIndex }) => {
+            listRef.current?.scrollToLocation({
+              sectionIndex: Math.min(todayIndex, highestMeasuredFrameIndex),
+              itemIndex: 0,
+              viewPosition: 0,
+              animated: false,
+            });
+            setTimeout(() => {
+              listRef.current?.scrollToLocation({
+                sectionIndex: todayIndex,
+                itemIndex: 0,
+                viewPosition: 0,
+                animated: false,
+              });
+            }, 300);
+          }}
+          renderSectionHeader={({ section }) => {
+            const isTodayHeader = section.iso === today;
+            return (
+              <Text
+                className={`text-[13px] font-bold px-4 pt-5 pb-2 capitalize ${isTodayHeader ? 'text-accent-fg' : 'text-accent'}`}
+              >
+                {isTodayHeader ? "Aujourd'hui" : section.title}
+              </Text>
+            );
+          }}
           renderItem={({ item }) => {
             const uri = imageUrl(item.posterPath, 'w185');
+            const isPast = item.airDate < today;
             return (
               <Pressable
                 onPress={() =>
@@ -426,27 +440,27 @@ export default function CalendarScreen() {
                     {item.episodeName ? ` · ${item.episodeName}` : ''}
                   </Text>
                 </View>
-                {mode === 'recent' ? (
+                {isPast ? (
                   <Ionicons
                     name={item.watched ? 'checkmark-circle' : 'ellipse-outline'}
                     size={24}
                     color={item.watched ? colors.accent : colors.textMuted}
                   />
-                ) : null}
+                ) : (
+                  <Ionicons
+                    name="time-outline"
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                )}
               </Pressable>
             );
           }}
         />
       ) : (
         <EmptyState
-          title={
-            mode === 'upcoming' ? "Rien à l'horizon" : 'Rien ces deux dernières semaines'
-          }
-          subtitle={
-            mode === 'upcoming'
-              ? 'Aucun épisode annoncé pour tes séries en cours.'
-              : 'Les épisodes sortis apparaîtront ici.'
-          }
+          title="Rien à l'horizon"
+          subtitle="Aucun épisode annoncé pour tes séries en cours."
         />
       )}
       </View>
