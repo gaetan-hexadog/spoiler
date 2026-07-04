@@ -342,6 +342,11 @@ export default function ProfileScreen() {
             onPress={() => router.push('/import')}
           />
           <SettingRow
+            icon="download"
+            label="Importer depuis Netflix"
+            onPress={() => router.push('/import-netflix')}
+          />
+          <SettingRow
             icon="refresh"
             label={
               checkingUpdate

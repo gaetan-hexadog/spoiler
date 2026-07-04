@@ -47,6 +47,10 @@ function AppShell() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="import" options={{ title: 'Import TV Time' }} />
+          <Stack.Screen
+            name="import-netflix"
+            options={{ title: 'Import Netflix' }}
+          />
           <Stack.Screen name="history" options={{ title: 'Historique' }} />
           <Stack.Screen name="pair" options={{ title: 'Associer Kodi' }} />
         </Stack>
