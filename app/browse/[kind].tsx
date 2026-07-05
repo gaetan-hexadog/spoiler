@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Animated, View } from 'react-native';
+import { ActivityIndicator, FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingHeader } from '@/components/FloatingHeader';
 import { PosterCard } from '@/components/PosterCard';
@@ -29,7 +29,7 @@ export default function BrowseScreen() {
   const router = useRouter();
   const columns = useGridColumns();
   const insets = useSafeAreaInsets();
-  const { scrollY, scrollProps } = useHeaderScroll();
+  const { scrolled, scrollProps } = useHeaderScroll();
 
   const trendingShows = useTrendingShows();
   const trendingMovies = useTrendingMovies();
@@ -52,13 +52,13 @@ export default function BrowseScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
       <FloatingHeader
-        scrollY={scrollY}
+        scrolled={scrolled}
         title={BROWSE_TITLES[kind] ?? 'Parcourir'}
       />
       {source.isLoading ? (
         <Loading />
       ) : source.items.length ? (
-        <Animated.FlatList
+        <FlatList
           {...scrollProps}
           key={`browse-${columns}`}
           data={source.items as { id: number }[]}

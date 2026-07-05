@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Reanimated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { colors } from '@/lib/theme';
 
 /** Bouton rond translucide qui flotte au-dessus du backdrop. */
@@ -36,78 +37,70 @@ export function FloatingButton({
 
 /**
  * Header flottant des fiches : retour à gauche, actions à droite.
- * Fixe et transparent sur le hero ; si un `scrollY` est fourni, une barre
- * translucide (floutée sur le web) apparaît en fondu quand on scrolle.
+ * Fixe et transparent sur le hero ; quand `scrolled` passe à true, une barre
+ * floutée (BlurView, web + natif) + le titre apparaissent en fondu.
  */
 export function FloatingHeader({
   right,
-  scrollY,
+  scrolled,
   title,
 }: {
   right?: React.ReactNode;
-  scrollY?: Animated.Value;
+  scrolled?: boolean;
   title?: string;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const barOpacity = scrollY
-    ? scrollY.interpolate({
-        inputRange: [0, 90, 170],
-        outputRange: [0, 0, 1],
-        extrapolate: 'clamp',
-      })
-    : undefined;
+  const hasScroll = scrolled !== undefined;
+  const fade = useAnimatedStyle(() => ({
+    opacity: withTiming(scrolled ? 1 : 0, { duration: 200 }),
+  }));
 
   return (
     <>
-      {scrollY ? (
-        // BlurView non-wrappé (sinon l'injection backdrop-filter web casse) :
-        // on anime l'opacité du conteneur parent.
-        <Animated.View
+      {hasScroll ? (
+        <Reanimated.View
           pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: insets.top + 52,
-            opacity: barOpacity,
-          }}
-        >
-          <BlurView intensity={48} tint="dark" style={StyleSheet.absoluteFill} />
-          <View
-            style={{
+          style={[
+            {
               position: 'absolute',
               top: 0,
               left: 0,
               right: 0,
-              bottom: 0,
+              height: insets.top + 52,
+              // Fond sombre semi-opaque : lisible partout, même si le flou
+              // web est subtil. Le BlurView ajoute le frost par-dessus.
+              backgroundColor: 'rgba(13,19,33,0.66)',
               borderBottomWidth: 1,
               borderBottomColor: colors.border,
-            }}
-          />
-        </Animated.View>
+            },
+            fade,
+          ]}
+        >
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        </Reanimated.View>
       ) : null}
-      {/* Titre : apparaît en fondu avec la barre (quand on scrolle). */}
-      {title && scrollY ? (
-        <Animated.Text
+      {title && hasScroll ? (
+        <Reanimated.Text
           numberOfLines={1}
           pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: insets.top + 14,
-            left: 64,
-            right: 64,
-            textAlign: 'center',
-            color: colors.text,
-            fontSize: 16,
-            fontWeight: '800',
-            opacity: barOpacity,
-            zIndex: 11,
-          }}
+          style={[
+            {
+              position: 'absolute',
+              top: insets.top + 14,
+              left: 64,
+              right: 64,
+              textAlign: 'center',
+              color: colors.text,
+              fontSize: 16,
+              fontWeight: '800',
+              zIndex: 11,
+            },
+            fade,
+          ]}
         >
           {title}
-        </Animated.Text>
+        </Reanimated.Text>
       ) : null}
       <View
         className="absolute left-0 right-0 z-10 flex-row justify-between px-3"

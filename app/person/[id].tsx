@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Animated, Image, Pressable, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingHeader } from '@/components/FloatingHeader';
 import { PosterCard } from '@/components/PosterCard';
@@ -31,7 +31,7 @@ export default function PersonScreen() {
   const person = usePersonDetails(personId);
   const columns = useGridColumns();
   const insets = useSafeAreaInsets();
-  const { scrollY, scrollProps } = useHeaderScroll();
+  const { scrolled, scrollProps } = useHeaderScroll();
   const { showBadge, movieBadge } = useLibraryBadges();
   const [bioExpanded, setBioExpanded] = useState(false);
 
@@ -73,8 +73,8 @@ export default function PersonScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
-      <FloatingHeader scrollY={scrollY} title={data.name} />
-      <Animated.FlatList
+      <FloatingHeader scrolled={scrolled} title={data.name} />
+      <FlatList
         {...scrollProps}
         key={`credits-${columns}`}
         data={credits}

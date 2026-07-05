@@ -1,10 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
+import { WatchCheck } from '@/components/WatchCheck';
 import { useMarkEpisode } from '@/hooks/queries';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { imageUrl } from '@/lib/tmdb';
-import { colors } from '@/lib/theme';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -62,8 +61,11 @@ export function NextEpisodeBanner({
             <Text className="text-muted text-[11px]">{runtime} min</Text>
           ) : null}
         </View>
-        <Pressable
-          onPress={() =>
+        <WatchCheck
+          watched={false}
+          size="lg"
+          pending={markEpisode.isPending}
+          onToggle={() =>
             markEpisode.mutate({
               showId,
               season: next.season,
@@ -71,14 +73,7 @@ export function NextEpisodeBanner({
               watched: true,
             })
           }
-          disabled={markEpisode.isPending}
-          className="w-11 h-11 rounded-full bg-accent items-center justify-center"
-          style={({ pressed }) =>
-            pressed || markEpisode.isPending ? { opacity: 0.7 } : undefined
-          }
-        >
-          <Ionicons name="checkmark" size={24} color={colors.accentText} />
-        </Pressable>
+        />
       </View>
 
       {/* <View className="flex-row items-center gap-2 mt-3">

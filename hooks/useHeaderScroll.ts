@@ -1,20 +1,21 @@
-import { useRef } from 'react';
-import { Animated } from 'react-native';
+import { useState } from 'react';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
 /**
- * Pilote le fond flou du FloatingHeader depuis un seul endroit.
- * Retourne la valeur de scroll (à passer au `FloatingHeader`) et les props à
- * étaler sur une `Animated.ScrollView` / `Animated.FlatList`.
+ * Pilote le fond flou du FloatingHeader de façon fiable (web + natif).
+ * Un simple booléen `scrolled` (passé au FloatingHeader) bascule quand on
+ * dépasse un petit seuil ; l'opacité est ensuite animée côté FloatingHeader
+ * via reanimated. `scrollProps` se pose sur une ScrollView / FlatList normale.
  *
- *   const { scrollY, scrollProps } = useHeaderScroll();
- *   <FloatingHeader scrollY={scrollY} … />
- *   <Animated.ScrollView {...scrollProps}>…</Animated.ScrollView>
+ *   const { scrolled, scrollProps } = useHeaderScroll();
+ *   <FloatingHeader scrolled={scrolled} … />
+ *   <ScrollView {...scrollProps}>…</ScrollView>
  */
-export function useHeaderScroll() {
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const onScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
-  );
-  return { scrollY, scrollProps: { onScroll, scrollEventThrottle: 16 } };
+export function useHeaderScroll(threshold = 40) {
+  const [scrolled, setScrolled] = useState(false);
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // setState avec la même valeur = no-op (pas de re-render superflu).
+    setScrolled(event.nativeEvent.contentOffset.y > threshold);
+  };
+  return { scrolled, scrollProps: { onScroll, scrollEventThrottle: 16 } };
 }

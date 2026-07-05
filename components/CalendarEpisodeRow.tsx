@@ -1,10 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
+import { WatchCheck } from '@/components/WatchCheck';
 import { useMarkEpisode } from '@/hooks/queries';
 import { imageUrl } from '@/lib/tmdb';
-import { colors } from '@/lib/theme';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -79,29 +78,20 @@ export function CalendarEpisodeRow({
             {relLabel(item.airDate, today)}
           </Text>
         </View>
-      ) : item.watched ? (
-        <Ionicons name="checkmark-circle" size={30} color={colors.accent} />
       ) : (
-        // Passé mais non vu : case vide « à cocher » (tap = marquer vu),
-        // distincte de la coche pleine d'un épisode réellement vu.
-        <Pressable
-          onPress={(event) => {
-            event.stopPropagation();
+        <WatchCheck
+          watched={item.watched}
+          size="sm"
+          pending={markEpisode.isPending}
+          onToggle={() =>
             markEpisode.mutate({
               showId: item.showId,
               season: item.season,
               episode: item.episode,
-              watched: true,
-            });
-          }}
-          disabled={markEpisode.isPending}
-          className="w-8 h-8 rounded-full border-2 border-line items-center justify-center"
-          style={({ pressed }) =>
-            pressed || markEpisode.isPending ? { opacity: 0.6 } : undefined
+              watched: !item.watched,
+            })
           }
-        >
-          <Ionicons name="checkmark" size={16} color={colors.textMuted} />
-        </Pressable>
+        />
       )}
     </Pressable>
   );

@@ -1,10 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { useActionSheet } from '@/components/ActionSheet';
 import { ProgressBar } from '@/components/ui';
+import { WatchCheck } from '@/components/WatchCheck';
 import { useMarkEpisode, useShowDetails } from '@/hooks/queries';
 import { useAutoShowStatus } from '@/hooks/useAutoShowStatus';
 import { useShowQuickActions } from '@/hooks/useShowQuickActions';
@@ -18,7 +18,6 @@ import {
   watchedSetForShow,
 } from '@/lib/progress';
 import { imageUrl } from '@/lib/tmdb';
-import { colors } from '@/lib/theme';
 
 export function ShowProgressCard({
   show,
@@ -92,26 +91,18 @@ export function ShowProgressCard({
         ) : null}
       </View>
       {next && !upToDate ? (
-        // Case vide « à cocher » : marque le prochain épisode vu (tap),
-        // sans se lire comme un état « déjà vu ».
-        <Pressable
-          onPress={(event) => {
-            event.stopPropagation();
+        <WatchCheck
+          watched={false}
+          pending={markEpisode.isPending}
+          onToggle={() =>
             markEpisode.mutate({
               showId: show.tmdb_id,
               season: next.season,
               episode: next.episode,
               watched: true,
-            });
-          }}
-          disabled={markEpisode.isPending}
-          className="w-9 h-9 rounded-full border-2 border-line items-center justify-center"
-          style={({ pressed }) =>
-            pressed || markEpisode.isPending ? { opacity: 0.6 } : undefined
+            })
           }
-        >
-          <Ionicons name="checkmark" size={18} color={colors.textMuted} />
-        </Pressable>
+        />
       ) : null}
     </Pressable>
     </Reanimated.View>

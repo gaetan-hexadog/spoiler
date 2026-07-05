@@ -3,7 +3,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import {
-  Animated,
   Image,
   Linking,
   Pressable,
@@ -22,7 +21,6 @@ import { DetailSkeleton } from '@/components/Skeleton';
 import { WhereToWatch } from '@/components/WhereToWatch';
 import { Screen } from '@/components/ui';
 import {
-  useAddMovie,
   useMovieDetails,
   useMovieRecommendations,
   useMovies,
@@ -37,12 +35,11 @@ export default function MovieDetailScreen() {
   const movieId = Number(params.id);
 
   const router = useRouter();
-  const { scrollY, scrollProps } = useHeaderScroll();
+  const { scrolled, scrollProps } = useHeaderScroll();
   const { show: openSheet, sheet } = useActionSheet();
   const isDesktop = useBreakpoint() === 'desktop';
   const details = useMovieDetails(movieId);
   const movies = useMovies();
-  const addMovie = useAddMovie();
   const removeMovie = useRemoveMovie();
   const recommendations = useMovieRecommendations(movieId);
 
@@ -84,6 +81,27 @@ export default function MovieDetailScreen() {
   // --- Blocs réutilisés par les layouts mobile et desktop ---
   // Barre d'actions unifiée (Vu · Watchlist · Noter).
   const actionsEl = <MovieActionBar movie={movie} />;
+
+  // Le header ne double plus la watchlist (gérée par MovieActionBar) : juste
+  // une action « … » pour retirer le film, visible s'il est dans la liste.
+  const headerRight = saved ? (
+    <FloatingButton
+      icon="ellipsis-horizontal"
+      onPress={() =>
+        openSheet({
+          title: 'Retirer de mes films',
+          message: movie.title,
+          actions: [
+            {
+              label: 'Retirer',
+              variant: 'danger',
+              onPress: () => removeMovie.mutate(movieId),
+            },
+          ],
+        })
+      }
+    />
+  ) : null;
 
   // Méta présentée en chips (année · durée · genres · note).
   const metaChips = (
@@ -152,36 +170,7 @@ export default function MovieDetailScreen() {
       <View className="flex-1 bg-bg">
         <Stack.Screen options={{ headerShown: false }} />
         {sheet}
-        <FloatingHeader
-          right={
-            <FloatingButton
-              icon={saved ? 'bookmark' : 'bookmark-outline'}
-              active={!!saved}
-              onPress={() => {
-                if (!saved) {
-                  addMovie.mutate({
-                    tmdb_id: movie.id,
-                    title: movie.title,
-                    poster_path: movie.poster_path,
-                    status: 'watchlist',
-                  });
-                } else {
-                  openSheet({
-                    title: 'Retirer de mes films',
-                    message: movie.title,
-                    actions: [
-                      {
-                        label: 'Retirer',
-                        variant: 'danger',
-                        onPress: () => removeMovie.mutate(movieId),
-                      },
-                    ],
-                  });
-                }
-              }}
-            />
-          }
-        />
+        <FloatingHeader right={headerRight} />
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View className="bg-surface" style={{ height: 360 }}>
             {backdrop ? (
@@ -244,40 +233,11 @@ export default function MovieDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       {sheet}
       <FloatingHeader
-        scrollY={scrollY}
-        right={
-          <FloatingButton
-            icon={saved ? 'bookmark' : 'bookmark-outline'}
-            active={!!saved}
-            onPress={() => {
-              if (!saved) {
-                addMovie.mutate({
-                  tmdb_id: movie.id,
-                  title: movie.title,
-                  poster_path: movie.poster_path,
-                  status: 'watchlist',
-                });
-              } else {
-                openSheet({
-                  title: 'Retirer de mes films',
-                  message: movie.title,
-                  actions: [
-                    {
-                      label: 'Retirer',
-                      variant: 'danger',
-                      onPress: () => removeMovie.mutate(movieId),
-                    },
-                  ],
-                });
-              }
-            }}
-          />
-        }
+        scrolled={scrolled}
+        title={movie.title}
+        right={headerRight}
       />
-      <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
-        {...scrollProps}
-      >
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} {...scrollProps}>
         <View
           className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
           style={isDesktop ? { height: 360 } : undefined}
@@ -366,7 +326,7 @@ export default function MovieDetailScreen() {
             />
           ) : null}
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </Screen>
   );
 }
