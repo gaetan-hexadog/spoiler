@@ -1,6 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { ActivityIndicator, FlatList, View } from 'react-native';
+import { ActivityIndicator, Animated, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FloatingHeader } from '@/components/FloatingHeader';
 import { PosterCard, type LibraryBadge } from '@/components/PosterCard';
 import { EmptyState, Loading, Screen } from '@/components/ui';
 import {
@@ -12,6 +14,7 @@ import {
   useTrendingShows,
 } from '@/hooks/queries';
 import { useGridColumns } from '@/hooks/useGridColumns';
+import { useHeaderScroll } from '@/hooks/useHeaderScroll';
 import { colors } from '@/lib/theme';
 
 export const BROWSE_TITLES: Record<string, string> = {
@@ -26,6 +29,8 @@ export default function BrowseScreen() {
   const kind = params.kind ?? 'trending-tv';
   const router = useRouter();
   const columns = useGridColumns();
+  const insets = useSafeAreaInsets();
+  const { scrollY, scrollProps } = useHeaderScroll();
 
   const trendingShows = useTrendingShows();
   const trendingMovies = useTrendingMovies();
@@ -70,18 +75,25 @@ export default function BrowseScreen() {
 
   return (
     <Screen>
-      <Stack.Screen
-        options={{ title: BROWSE_TITLES[kind] ?? 'Parcourir' }}
+      <Stack.Screen options={{ headerShown: false }} />
+      <FloatingHeader
+        scrollY={scrollY}
+        title={BROWSE_TITLES[kind] ?? 'Parcourir'}
       />
       {source.isLoading ? (
         <Loading />
       ) : source.items.length ? (
-        <FlatList
+        <Animated.FlatList
+          {...scrollProps}
           key={`browse-${columns}`}
           data={source.items as { id: number }[]}
           numColumns={columns}
           keyExtractor={(item, index) => `${item.id}-${index}`}
-          contentContainerStyle={{ padding: 8, paddingBottom: 32 }}
+          contentContainerStyle={{
+            padding: 8,
+            paddingTop: insets.top + 52,
+            paddingBottom: 32,
+          }}
           onEndReached={source.loadMore}
           onEndReachedThreshold={1}
           ListFooterComponent={

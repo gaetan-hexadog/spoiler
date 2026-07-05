@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import {
   Animated,
   Image,
@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useHeaderScroll } from '@/hooks/useHeaderScroll';
 import { useActionSheet } from '@/components/ActionSheet';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
@@ -36,7 +37,7 @@ export default function MovieDetailScreen() {
   const movieId = Number(params.id);
 
   const router = useRouter();
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const { scrollY, scrollProps } = useHeaderScroll();
   const { show: openSheet, sheet } = useActionSheet();
   const isDesktop = useBreakpoint() === 'desktop';
   const details = useMovieDetails(movieId);
@@ -275,11 +276,7 @@ export default function MovieDetailScreen() {
       />
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
+        {...scrollProps}
       >
         <View
           className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}

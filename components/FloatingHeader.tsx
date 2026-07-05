@@ -44,9 +44,11 @@ export function FloatingButton({
 export function FloatingHeader({
   right,
   scrollY,
+  title,
 }: {
   right?: React.ReactNode;
   scrollY?: Animated.Value;
+  title?: string;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -76,6 +78,27 @@ export function FloatingHeader({
             opacity: barOpacity,
           }}
         />
+      ) : null}
+      {/* Titre : apparaît en fondu avec la barre (quand on scrolle). */}
+      {title && scrollY ? (
+        <Animated.Text
+          numberOfLines={1}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: insets.top + 14,
+            left: 64,
+            right: 64,
+            textAlign: 'center',
+            color: colors.text,
+            fontSize: 16,
+            fontWeight: '800',
+            opacity: barOpacity,
+            zIndex: 11,
+          }}
+        >
+          {title}
+        </Animated.Text>
       ) : null}
       <View
         className="absolute left-0 right-0 z-10 flex-row justify-between px-3"

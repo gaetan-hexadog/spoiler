@@ -1,10 +1,13 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, Text, View } from 'react-native';
+import { Animated, Image, Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FloatingHeader } from '@/components/FloatingHeader';
 import { PosterCard, type LibraryBadge } from '@/components/PosterCard';
 import { Loading, Screen } from '@/components/ui';
 import { useMovies, usePersonDetails, useTrackedShows } from '@/hooks/queries';
 import { useGridColumns } from '@/hooks/useGridColumns';
+import { useHeaderScroll } from '@/hooks/useHeaderScroll';
 import { imageUrl, type TmdbPersonCredit } from '@/lib/tmdb';
 
 function age(birthday: string, deathday: string | null): number {
@@ -26,6 +29,8 @@ export default function PersonScreen() {
   const router = useRouter();
   const person = usePersonDetails(personId);
   const columns = useGridColumns();
+  const insets = useSafeAreaInsets();
+  const { scrollY, scrollProps } = useHeaderScroll();
   const [bioExpanded, setBioExpanded] = useState(false);
 
   // Flags de statut sur la filmographie (comme Découvrir / Voir tout).
@@ -92,13 +97,19 @@ export default function PersonScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: data.name }} />
-      <FlatList
+      <Stack.Screen options={{ headerShown: false }} />
+      <FloatingHeader scrollY={scrollY} title={data.name} />
+      <Animated.FlatList
+        {...scrollProps}
         key={`credits-${columns}`}
         data={credits}
         numColumns={columns}
         keyExtractor={(item) => `${item.media_type}-${item.id}`}
-        contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 32 }}
+        contentContainerStyle={{
+          paddingHorizontal: 8,
+          paddingTop: insets.top + 52,
+          paddingBottom: 32,
+        }}
         ListHeaderComponent={
           <View className="gap-4 px-2 pt-3 pb-4">
             <View className="flex-row gap-4 items-center">
