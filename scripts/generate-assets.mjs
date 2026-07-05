@@ -1,18 +1,16 @@
 // Génère les assets de l'app (icône iOS, adaptive Android, monochrome, splash,
 // favicon, logo UI) à partir du logo PopcornLog : seau de pop-corn rayé +
 // coche « vu ». Usage : node scripts/generate-assets.mjs
+//
+// Méthode : on rend le logo, on le détoure (trim) pour obtenir sa vraie boîte
+// englobante, puis on le recompose CENTRÉ sur chaque tuile avec la marge
+// voulue (« le logo respire »). Le centrage est donc exact par construction.
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 
 const ICON_BG = '#26203C'; // fond des icônes (prune ; cf. app.json adaptiveIcon.backgroundColor)
 
-// --- Logo en coordonnées natives (repère du SVG source) --------------------
-// Boîte englobante réelle du dessin : x ∈ [62,178], y ∈ [61,206].
-const CX = 120; // centre horizontal du contenu
-const CY = 133.5; // centre vertical du contenu
-const MAX_DIM = 145; // plus grande dimension (hauteur) → sert au cadrage
-
-// Version couleur (seau rayé + pop-corn + coche).
+// Version couleur (seau rayé + pop-corn + coche), en coordonnées natives.
 const LOGO_COLOR = `
   <defs>
     <clipPath id="bucket">
@@ -56,40 +54,55 @@ const LOGO_MONO = `
     <rect x="64" y="100" width="112" height="16" rx="8"/>
   </g>`;
 
-/**
- * Compose une tuile carrée : le logo centré occupe `p` (0–1) de la tuile,
- * le reste est de la marge (le logo « respire »). `bg` = fond (ou null pour
- * transparent).
- */
-function tile(content, p, bg) {
-  const side = MAX_DIM / p;
-  const vx = CX - side / 2;
-  const vy = CY - side / 2;
-  return `<svg width="1024" height="1024" viewBox="${vx} ${vy} ${side} ${side}" xmlns="http://www.w3.org/2000/svg">
-    ${bg ? `<rect x="${vx}" y="${vy}" width="${side}" height="${side}" fill="${bg}"/>` : ''}
-    ${content}
-  </svg>`;
+// Rend le logo puis le détoure → PNG serré sur son contenu réel.
+function trimmedLogo(markup) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" width="1440" height="1680">${markup}</svg>`;
+  return sharp(Buffer.from(svg)).trim().png().toBuffer();
+}
+
+/** Recompose le logo détouré, centré sur une tuile carrée, occupant `p` (0–1). */
+async function makeTile(logoBuf, { p, bg, size }) {
+  const meta = await sharp(logoBuf).metadata();
+  const scale = (p * size) / Math.max(meta.width, meta.height);
+  const resized = await sharp(logoBuf)
+    .resize({
+      width: Math.round(meta.width * scale),
+      height: Math.round(meta.height * scale),
+    })
+    .toBuffer();
+  const base = sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: bg ?? { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  });
+  return base.composite([{ input: resized, gravity: 'center' }]).png().toBuffer();
 }
 
 mkdirSync('assets', { recursive: true });
 
+const color = await trimmedLogo(LOGO_COLOR);
+const mono = await trimmedLogo(LOGO_MONO);
+
 const jobs = [
   // iOS + fallback : plein cadre opaque, le logo respire (~62 %).
-  ['assets/icon.png', tile(LOGO_COLOR, 0.62, ICON_BG), 1024],
+  ['assets/icon.png', color, { p: 0.62, bg: ICON_BG, size: 1024 }],
   // Android adaptive foreground : transparent, ~46 % (dans la safe zone).
-  ['assets/android-icon-foreground.png', tile(LOGO_COLOR, 0.46, null), 1024],
+  ['assets/android-icon-foreground.png', color, { p: 0.46, bg: null, size: 1024 }],
   // Android monochrome (icône thématique) : silhouette + coche évidée.
-  ['assets/android-icon-monochrome.png', tile(LOGO_MONO, 0.46, null), 1024],
+  ['assets/android-icon-monochrome.png', mono, { p: 0.46, bg: null, size: 1024 }],
   // Splash : logo transparent (le fond #0D1321 vient d'expo-splash-screen).
-  ['assets/splash-icon.png', tile(LOGO_COLOR, 0.8, null), 1024],
+  ['assets/splash-icon.png', color, { p: 0.8, bg: null, size: 1024 }],
   // Favicon web : petit → fond + logo un peu plus grand (~68 %).
-  ['assets/favicon.png', tile(LOGO_COLOR, 0.68, ICON_BG), 64],
+  ['assets/favicon.png', color, { p: 0.68, bg: ICON_BG, size: 64 }],
   // Logo UI in-app (sidebar / écrans d'auth) : transparent, resserré.
-  ['assets/logo.png', tile(LOGO_COLOR, 0.92, null), 512],
+  ['assets/logo.png', color, { p: 0.92, bg: null, size: 512 }],
 ];
 
-for (const [file, source, size] of jobs) {
-  await sharp(Buffer.from(source)).resize(size, size).png().toFile(file);
+for (const [file, buf, opts] of jobs) {
+  await sharp(await makeTile(buf, opts)).toFile(file);
   console.log('✓', file);
 }
 
