@@ -68,6 +68,11 @@ export function FloatingHeader({
               left: 0,
               right: 0,
               height: insets.top + 52,
+              // La barre doit passer AU-DESSUS du contenu du ScrollView (qui est
+              // un frère rendu après le header) sinon le contenu la recouvre sur
+              // natif et on ne voit ni fond ni flou. On reste sous les boutons
+              // (z-10) et le titre (z-11).
+              zIndex: 9,
               // Fond sombre semi-opaque : lisible partout, même si le flou
               // web est subtil. Le BlurView ajoute le frost par-dessus.
               backgroundColor: 'rgba(13,19,33,0.66)',
