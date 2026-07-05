@@ -42,6 +42,10 @@ const SEASON_RE =
 // Séries sans numéro de saison explicite (mini-séries) → saison 1
 const PART_RE =
   /^(.*?):\s*(?:Limited Series|Miniseries|Mini-série|Miniserie)\b[^:]*:\s*(.*)$/i;
+// « Émission : Épisode 12 » (talk-shows, docs, animes sans saison) → saison 1.
+// SANS ça, ces lignes partaient en recherche FILM et se liaient n'importe où.
+const EPISODE_TAIL_RE =
+  /^(.*?):\s*((?:Épisode|Episode|Chapitre|Chapter|Folge|Capítulo|Aflevering)\s+\d+.*)$/i;
 
 /** Décompose un titre Netflix en épisode de série ou film. */
 export function parseNetflixTitle(raw: string): ParsedTitle {
@@ -62,6 +66,15 @@ export function parseNetflixTitle(raw: string): ParsedTitle {
       show: partMatch[1].trim(),
       season: 1,
       episodeTitle: partMatch[2].trim(),
+    };
+  }
+  const tailMatch = trimmed.match(EPISODE_TAIL_RE);
+  if (tailMatch) {
+    return {
+      kind: 'episode',
+      show: tailMatch[1].trim(),
+      season: 1,
+      episodeTitle: tailMatch[2].trim(),
     };
   }
   return { kind: 'movie', title: trimmed };

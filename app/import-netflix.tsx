@@ -4,24 +4,21 @@ import * as FileSystem from 'expo-file-system/legacy';
 import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Button, Muted, Screen } from '@/components/ui';
-import { addMovie, markEpisodesBulk, trackShow } from '@/lib/db';
+import { importMovieWatched, markEpisodesBulk, trackShow } from '@/lib/db';
+import { findMovieMatch, findShowMatch } from '@/lib/match';
 import {
   normalizeTitle,
   parseNetflixCsv,
   type NetflixEpisode,
 } from '@/lib/netflix';
-import {
-  getSeasonDetails,
-  searchMovies,
-  searchShows,
-  type TmdbEpisode,
-} from '@/lib/tmdb';
+import { getSeasonDetails, type TmdbEpisode } from '@/lib/tmdb';
 
 interface ImportReport {
   showsMatched: number;
   episodesMatched: number;
   moviesMatched: number;
   unmatchedShows: string[];
+  unmatchedMovies: string[];
   unmatchedEpisodes: number;
   skipped: number;
 }
@@ -64,6 +61,7 @@ export default function ImportNetflixScreen() {
         episodesMatched: 0,
         moviesMatched: 0,
         unmatchedShows: [],
+        unmatchedMovies: [],
         unmatchedEpisodes: 0,
         skipped,
       };
@@ -75,40 +73,45 @@ export default function ImportNetflixScreen() {
         index++;
         setProgress(`Séries ${index}/${series.size} — ${showName}`);
         try {
-          const search = await searchShows(showName);
-          const match = search.results[0];
+          const { match, exact } = await findShowMatch(showName);
           if (!match) {
             result.unmatchedShows.push(showName);
             continue;
           }
+
+          // Résoudre les épisodes AVANT d'enregistrer : si le titre TMDB ne
+          // correspond pas exactement ET qu'aucun titre d'épisode ne matche,
+          // c'est très probablement la mauvaise série → on ne pollue pas.
+          const toMark: {
+            tmdb_show_id: number;
+            season_number: number;
+            episode_number: number;
+          }[] = [];
+          let byTitleHits = 0;
+          for (const ep of episodes) {
+            const resolved = await resolveEpisode(match.id, ep, seasonCache);
+            if (resolved != null) {
+              if (resolved.byTitle) byTitleHits++;
+              toMark.push({
+                tmdb_show_id: match.id,
+                season_number: ep.season,
+                episode_number: resolved.number,
+              });
+            } else {
+              result.unmatchedEpisodes++;
+            }
+          }
+          if (!exact && byTitleHits === 0) {
+            result.unmatchedShows.push(showName);
+            continue;
+          }
+
           await trackShow({
             tmdb_id: match.id,
             name: match.name,
             poster_path: match.poster_path,
             backdrop_path: match.backdrop_path,
           });
-
-          const toMark: {
-            tmdb_show_id: number;
-            season_number: number;
-            episode_number: number;
-          }[] = [];
-          for (const ep of episodes) {
-            const number = await resolveEpisode(
-              match.id,
-              ep,
-              seasonCache
-            );
-            if (number != null) {
-              toMark.push({
-                tmdb_show_id: match.id,
-                season_number: ep.season,
-                episode_number: number,
-              });
-            } else {
-              result.unmatchedEpisodes++;
-            }
-          }
           if (toMark.length) {
             await markEpisodesBulk(toMark);
             result.episodesMatched += toMark.length;
@@ -119,24 +122,26 @@ export default function ImportNetflixScreen() {
         }
       }
 
-      // --- Films ---
+      // --- Films : correspondance de titre VÉRIFIÉE (sinon signalé, jamais
+      // lié au hasard) ; écriture idempotente (ré-import sans écrasement). ---
       let mIndex = 0;
       for (const title of movies) {
         mIndex++;
         setProgress(`Films ${mIndex}/${movies.length} — ${title}`);
         try {
-          const search = await searchMovies(title);
-          const match = search.results[0];
-          if (!match) continue;
-          await addMovie({
+          const match = await findMovieMatch(title);
+          if (!match) {
+            result.unmatchedMovies.push(title);
+            continue;
+          }
+          await importMovieWatched({
             tmdb_id: match.id,
             title: match.title,
             poster_path: match.poster_path,
-            status: 'watched',
           });
           result.moviesMatched++;
         } catch {
-          // titre non résolu : ignoré
+          result.unmatchedMovies.push(title);
         }
       }
 
@@ -150,12 +155,16 @@ export default function ImportNetflixScreen() {
     }
   }
 
-  /** Retrouve le numéro d'épisode TMDB à partir du titre Netflix. */
+  /**
+   * Retrouve le numéro d'épisode TMDB à partir du titre Netflix.
+   * `byTitle` distingue une vraie correspondance de titre (signal fort que la
+   * série est la bonne) du simple repli « Épisode N ».
+   */
   async function resolveEpisode(
     showId: number,
     ep: NetflixEpisode,
     cache: Map<string, Map<string, number>>
-  ): Promise<number | null> {
+  ): Promise<{ number: number; byTitle: boolean } | null> {
     const key = `${showId}:${ep.season}`;
     let byName = cache.get(key);
     if (!byName) {
@@ -171,9 +180,10 @@ export default function ImportNetflixScreen() {
       cache.set(key, byName);
     }
     const byTitle = byName.get(normalizeTitle(ep.episodeTitle));
-    if (byTitle != null) return byTitle;
+    if (byTitle != null) return { number: byTitle, byTitle: true };
     // Repli : « Épisode N » dans le titre Netflix.
-    return episodeNumberFromTitle(ep.episodeTitle);
+    const fromNumber = episodeNumberFromTitle(ep.episodeTitle);
+    return fromNumber != null ? { number: fromNumber, byTitle: false } : null;
   }
 
   return (
@@ -223,6 +233,18 @@ export default function ImportNetflixScreen() {
                   Séries non trouvées :
                 </Text>
                 {report.unmatchedShows.slice(0, 40).map((name) => (
+                  <Text key={name} className="text-muted text-[13px]">
+                    · {name}
+                  </Text>
+                ))}
+              </>
+            ) : null}
+            {report.unmatchedMovies.length ? (
+              <>
+                <Text className="text-fg font-bold mt-2">
+                  Films non liés (titre sans correspondance sûre) :
+                </Text>
+                {report.unmatchedMovies.slice(0, 60).map((name) => (
                   <Text key={name} className="text-muted text-[13px]">
                     · {name}
                   </Text>

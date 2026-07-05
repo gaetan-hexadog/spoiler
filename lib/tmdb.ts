@@ -9,6 +9,7 @@ const LANG = 'fr-FR';
 export interface TmdbShowSummary {
   id: number;
   name: string;
+  original_name?: string;
   overview: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -109,6 +110,7 @@ export interface TmdbSeasonDetails {
 export interface TmdbMovieSummary {
   id: number;
   title: string;
+  original_title?: string;
   overview: string;
   poster_path: string | null;
   backdrop_path: string | null;

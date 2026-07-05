@@ -5,8 +5,9 @@ import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Button, Muted, Screen } from '@/components/ui';
 import { importMovieWatched, markEpisodesBulk, trackShow } from '@/lib/db';
+import { findMovieMatch } from '@/lib/match';
 import { groupByShow, parseTvTimeCsv } from '@/lib/tvtime';
-import { searchMovies, searchShows } from '@/lib/tmdb';
+import { searchShows } from '@/lib/tmdb';
 
 interface ImportReport {
   matched: { name: string; episodes: number }[];
@@ -87,8 +88,8 @@ export default function ImportScreen() {
         movieIndex++;
         setProgress(`Films ${movieIndex} / ${movies.length} — ${movie.title}`);
         try {
-          const search = await searchMovies(movie.title);
-          const match = search.results[0];
+          // Correspondance de titre vérifiée : jamais de mauvais film lié.
+          const match = await findMovieMatch(movie.title);
           if (!match) {
             result.moviesUnmatched.push(movie.title);
             continue;
