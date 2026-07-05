@@ -123,10 +123,11 @@ export default function ImportScreen() {
         </Text>
         <Muted>
           Demande l'export de tes données sur TV Time (Paramètres → compte →
-          exporter, ou demande RGPD par email). Sélectionne le fichier
-          « tracking-prod-records-v2.csv » : il contient tout — épisodes vus ET
-          films. (L'ancien « seen_episode.csv », épisodes seulement, marche
-          aussi.) Chaque titre sera retrouvé sur TMDB et ton historique recréé.
+          exporter, ou demande RGPD par email). Deux fichiers à importer, l'un
+          après l'autre : « tracking-prod-records-v2.csv » (tous les épisodes
+          vus) puis « tracking-prod-records.csv » (les FILMS + anciens
+          épisodes). Chaque titre est retrouvé sur TMDB ; le ré-import ne crée
+          jamais de doublon.
         </Muted>
 
         <Button
