@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { RatingStars } from '@/components/RatingStars';
 import {
   useAddMovie,
   useMovies,
+  useRemoveMovie,
   useSetMovieRating,
   useSetMovieStatus,
 } from '@/hooks/queries';
@@ -12,56 +13,47 @@ import type { TmdbMovieDetails } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
 
 /**
- * 1b — Barre d'actions unifiée de la fiche film.
- * Réunit les deux logiques aujourd'hui éclatées (bookmark « watchlist » dans le
- * header + bouton « Vu » dans le corps) en trois actions claires et égales :
- * Vu · Watchlist · Noter.
- *
+ * Barre d'actions de la fiche film : deux boutons d'ÉTAT mutuellement exclusifs
+ * (Vu · Watchlist). La notation n'est pas un bouton-switch : elle apparaît
+ * d'elle-même quand le film est « Vu » (comme « Ma note » sur la fiche série).
  * Remplace `actionsEl` + le bloc d'actions dans app/movie/[id].tsx.
- * Le bookmark du FloatingHeader peut être retiré (ou gardé en miroir de « Watchlist »).
  */
 export function MovieActionBar({ movie }: { movie: TmdbMovieDetails }) {
   const movies = useMovies();
   const addMovie = useAddMovie();
   const setStatus = useSetMovieStatus();
   const setRating = useSetMovieRating();
+  const removeMovie = useRemoveMovie();
   const saved = (movies.data ?? []).find((m) => m.tmdb_id === movie.id);
-  const [rateOpen, setRateOpen] = useState(false);
 
   const watched = saved?.status === 'watched';
   const inWatchlist = saved?.status === 'watchlist';
-  const showStars = rateOpen || (watched && saved?.rating != null);
 
-  const toggleWatched = () => {
+  // Chaque bouton toggle SON propre statut. Actif → on retire ; inactif → on
+  // (dé)place vers ce statut. Watched et watchlist étant exclusifs, activer
+  // l'un désactive l'autre (mais cliquer un bouton déjà actif ne bascule JAMAIS
+  // vers l'autre statut).
+  const setStatusOrAdd = (status: 'watched' | 'watchlist') => {
     if (!saved) {
       addMovie.mutate({
         tmdb_id: movie.id,
         title: movie.title,
         poster_path: movie.poster_path,
-        status: 'watched',
+        status,
       });
     } else {
-      setStatus.mutate({
-        tmdbId: movie.id,
-        status: watched ? 'watchlist' : 'watched',
-      });
+      setStatus.mutate({ tmdbId: movie.id, status });
     }
   };
 
+  const toggleWatched = () => {
+    if (watched) removeMovie.mutate(movie.id);
+    else setStatusOrAdd('watched');
+  };
+
   const toggleWatchlist = () => {
-    if (!saved) {
-      addMovie.mutate({
-        tmdb_id: movie.id,
-        title: movie.title,
-        poster_path: movie.poster_path,
-        status: 'watchlist',
-      });
-    } else {
-      setStatus.mutate({
-        tmdbId: movie.id,
-        status: inWatchlist ? 'watched' : 'watchlist',
-      });
-    }
+    if (inWatchlist) removeMovie.mutate(movie.id);
+    else setStatusOrAdd('watchlist');
   };
 
   const Btn = ({
@@ -112,29 +104,14 @@ export function MovieActionBar({ movie }: { movie: TmdbMovieDetails }) {
           active={inWatchlist}
           onPress={toggleWatchlist}
         />
-        <Btn
-          icon="star-outline"
-          label="Noter"
-          active={rateOpen}
-          onPress={() => setRateOpen((v) => !v)}
-        />
       </View>
 
-      {showStars ? (
+      {/* La note apparaît d'elle-même une fois le film vu (pas de bouton-switch). */}
+      {watched ? (
         <View className="bg-surface rounded-2xl p-3">
           <RatingStars
             value={saved?.rating ?? null}
-            onChange={(rating) => {
-              if (!saved) {
-                addMovie.mutate({
-                  tmdb_id: movie.id,
-                  title: movie.title,
-                  poster_path: movie.poster_path,
-                  status: 'watched',
-                });
-              }
-              setRating.mutate({ tmdbId: movie.id, rating });
-            }}
+            onChange={(rating) => setRating.mutate({ tmdbId: movie.id, rating })}
           />
         </View>
       ) : null}

@@ -506,19 +506,12 @@ export default function ShowDetailScreen() {
         {sheet}
         <FloatingHeader
           right={
-            <>
-              {trackedShow ? (
-                <FloatingButton
-                  icon="ellipsis-horizontal"
-                  onPress={openOptions}
-                />
-              ) : null}
+            trackedShow ? (
               <FloatingButton
-                icon={trackedShow ? 'bookmark' : 'bookmark-outline'}
-                active={!!trackedShow}
-                onPress={trackedShow ? unfollow : follow}
+                icon="ellipsis-horizontal"
+                onPress={openOptions}
               />
-            </>
+            ) : null
           }
         />
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
@@ -615,16 +608,9 @@ export default function ShowDetailScreen() {
         scrolled={scrolled}
         title={show.name}
         right={
-          <>
-            {trackedShow ? (
-              <FloatingButton icon="ellipsis-horizontal" onPress={openOptions} />
-            ) : null}
-            <FloatingButton
-              icon={trackedShow ? 'bookmark' : 'bookmark-outline'}
-              active={!!trackedShow}
-              onPress={trackedShow ? unfollow : follow}
-            />
-          </>
+          trackedShow ? (
+            <FloatingButton icon="ellipsis-horizontal" onPress={openOptions} />
+          ) : null
         }
       />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }} {...scrollProps}>
