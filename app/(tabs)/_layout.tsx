@@ -79,11 +79,12 @@ export default function TabsLayout() {
 
   return (
     <Tabs style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* Le TabSlot headless (expo-router/ui) ne pose pas de safe-area : on
-          réserve l'inset haut via pt-safe (Uniwind → rt.insets.top, alimenté
-          par le SafeAreaListener du layout racine). Sans ça, le contenu des
-          onglets passe sous la status bar sur mobile. */}
-      <View className="flex-1 pt-safe">
+      {/* Pas de pt-safe ici : chaque page d'onglet a un FrostedHeader qui gère
+          lui-même l'inset haut (comme le FloatingHeader des fiches) et rembourre
+          son scroller. Doubler l'inset ici créait un padding fantôme au-dessus
+          du header sur mobile. Le header flotte donc en bord-à-bord sous la
+          status bar, cohérent avec les fiches. */}
+      <View className="flex-1">
         <TabSlot style={{ flex: 1 }} />
       </View>
       {/* Desktop/tablette : la sidebar est fournie par le layout racine, la

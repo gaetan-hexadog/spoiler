@@ -303,6 +303,12 @@ export default function CalendarScreen() {
   if (loading) {
     return (
       <Screen>
+        <FrostedHeader onHeight={setHeaderH}>
+          <View className="flex-row items-center px-4 pt-3 pb-2">
+            <Text className="text-fg text-2xl font-extrabold">Calendrier</Text>
+          </View>
+        </FrostedHeader>
+        <View style={{ height: headerH }} />
         <RowListSkeleton />
       </Screen>
     );
