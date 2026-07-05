@@ -104,10 +104,20 @@ function moviesFromNetflix(text) {
         maxYear = yy < 100 ? 2000 + yy : yy;
       }
     }
+    // Date de visionnage complète (M/D/YY) → watched_at restauré à l'ajout.
+    let watchedAt;
+    if (di !== -1) {
+      const m = (row[di] ?? '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if (m) {
+        const yy = Number(m[3]);
+        const year = yy < 100 ? 2000 + yy : yy;
+        watchedAt = `${year}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}T12:00:00Z`;
+      }
+    }
     const prev = byTitle.get(title);
     // Garder la date de visionnage la plus ANCIENNE (borne la plus stricte).
     if (!prev || (maxYear && (!prev.maxYear || maxYear < prev.maxYear))) {
-      byTitle.set(title, { title, maxYear });
+      byTitle.set(title, { title, maxYear, watchedAt: watchedAt ?? prev?.watchedAt });
     }
   }
   return [...byTitle.values()];
@@ -123,6 +133,7 @@ function moviesFromTvTimeV1(text) {
   const movieI = header.indexOf('movie_name');
   const releaseI = header.indexOf('release_date');
   if (movieI === -1) return [];
+  const createdI = header.indexOf('created_at');
   const byTitle = new Map();
   for (const row of rows.slice(1)) {
     if (typeI !== -1 && !(row[typeI] ?? '').includes('watch')) continue;
@@ -134,7 +145,13 @@ function moviesFromTvTimeV1(text) {
       const m = (row[releaseI] ?? '').match(/^(\d{4})-/);
       if (m && m[1] !== '0001') year = Number(m[1]);
     }
-    byTitle.set(title, { title, year });
+    // Date du visionnage TV Time (created_at « YYYY-MM-DD HH:MM:SS »).
+    let watchedAt;
+    if (createdI !== -1) {
+      const c = (row[createdI] ?? '').trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(c)) watchedAt = c.replace(' ', 'T') + 'Z';
+    }
+    byTitle.set(title, { title, year, watchedAt });
   }
   return [...byTitle.values()];
 }
@@ -235,8 +252,19 @@ for (const file of args) {
   console.log(`${file} → ${entries.length} titres de films`);
   for (const e of entries) {
     const prev = byTitle.get(e.title);
-    // L'année de sortie (TV Time) prime sur la simple borne (Netflix).
-    if (!prev || (e.year && !prev.year)) byTitle.set(e.title, { ...prev, ...e });
+    // L'année de sortie (TV Time) prime sur la simple borne (Netflix) ;
+    // la date de visionnage la plus ancienne est conservée.
+    if (!prev || (e.year && !prev.year)) {
+      byTitle.set(e.title, {
+        title: e.title,
+        year: e.year ?? prev?.year,
+        maxYear: e.maxYear ?? prev?.maxYear,
+        watchedAt:
+          [prev?.watchedAt, e.watchedAt].filter(Boolean).sort()[0] ?? undefined,
+      });
+    } else if (e.watchedAt && (!prev.watchedAt || e.watchedAt < prev.watchedAt)) {
+      prev.watchedAt = e.watchedAt;
+    }
   }
 }
 const uniqueEntries = [...byTitle.values()];
@@ -283,6 +311,7 @@ await Promise.all(
             id: good.id,
             title: good.title,
             poster_path: good.poster_path ?? null,
+            watchedAt: entry.watchedAt ?? null,
           });
         }
       } else {
@@ -383,7 +412,10 @@ if ((FIX && finalSuspects.length) || (ADD && missing.length)) {
           title: m.title,
           poster_path: m.poster_path,
           status: 'watched',
-          watched_at: dateFor.get(m.id) ?? new Date().toISOString(),
+          // Vraie date de visionnage (created_at TV Time / Date Netflix) —
+          // le bilan par année reste juste.
+          watched_at:
+            dateFor.get(m.id) ?? m.watchedAt ?? new Date().toISOString(),
         },
         { onConflict: 'user_id,tmdb_id', ignoreDuplicates: true }
       );
