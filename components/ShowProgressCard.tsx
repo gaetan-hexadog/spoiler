@@ -90,6 +90,8 @@ export function ShowProgressCard({
         ) : null}
       </View>
       {next && !upToDate ? (
+        // Case vide « à cocher » : marque le prochain épisode vu (tap),
+        // sans se lire comme un état « déjà vu ».
         <Pressable
           onPress={(event) => {
             event.stopPropagation();
@@ -101,12 +103,12 @@ export function ShowProgressCard({
             });
           }}
           disabled={markEpisode.isPending}
-          className="w-10 h-10 rounded-full bg-accent items-center justify-center"
+          className="w-9 h-9 rounded-full border-2 border-line items-center justify-center"
           style={({ pressed }) =>
             pressed || markEpisode.isPending ? { opacity: 0.6 } : undefined
           }
         >
-          <Ionicons name="checkmark" size={22} color={colors.accentText} />
+          <Ionicons name="checkmark" size={18} color={colors.textMuted} />
         </Pressable>
       ) : null}
     </Pressable>

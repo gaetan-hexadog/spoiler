@@ -1,9 +1,9 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, Text, View } from 'react-native';
-import { PosterCard } from '@/components/PosterCard';
+import { PosterCard, type LibraryBadge } from '@/components/PosterCard';
 import { Loading, Screen } from '@/components/ui';
-import { usePersonDetails } from '@/hooks/queries';
+import { useMovies, usePersonDetails, useTrackedShows } from '@/hooks/queries';
 import { useGridColumns } from '@/hooks/useGridColumns';
 import { imageUrl, type TmdbPersonCredit } from '@/lib/tmdb';
 
@@ -27,6 +27,33 @@ export default function PersonScreen() {
   const person = usePersonDetails(personId);
   const columns = useGridColumns();
   const [bioExpanded, setBioExpanded] = useState(false);
+
+  // Flags de statut sur la filmographie (comme Découvrir / Voir tout).
+  const tracked = useTrackedShows();
+  const movies = useMovies();
+  const showBadges = useMemo(() => {
+    const map = new Map<number, LibraryBadge>();
+    for (const show of tracked.data ?? []) {
+      map.set(
+        show.tmdb_id,
+        show.status === 'completed'
+          ? 'watched'
+          : show.status === 'stopped'
+            ? 'stopped'
+            : show.status === 'planned'
+              ? 'planned'
+              : 'watching'
+      );
+    }
+    return map;
+  }, [tracked.data]);
+  const movieBadges = useMemo(() => {
+    const map = new Map<number, LibraryBadge>();
+    for (const movie of movies.data ?? []) {
+      map.set(movie.tmdb_id, movie.status === 'watched' ? 'watched' : 'planned');
+    }
+    return map;
+  }, [movies.data]);
 
   // Filmographie : dédupliquée, triée par date de sortie décroissante.
   const credits = useMemo(() => {
@@ -132,6 +159,11 @@ export default function PersonScreen() {
             subtitle={
               item.character ||
               (item.release_date ?? item.first_air_date)?.slice(0, 4)
+            }
+            badge={
+              item.media_type === 'tv'
+                ? showBadges.get(item.id)
+                : movieBadges.get(item.id)
             }
             onPress={() => openCredit(item)}
           />
