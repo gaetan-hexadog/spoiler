@@ -137,7 +137,11 @@ export default function DiscoverScreen() {
               render={movieCard}
             />
             {!searchShows.items.length && !searchMovies.items.length ? (
-              <EmptyState title="Aucun résultat" />
+              <EmptyState
+                icon="search-outline"
+                title="Aucun résultat"
+                subtitle={`Rien trouvé pour « ${query.trim()} ».`}
+              />
             ) : null}
           </ScrollView>
         )

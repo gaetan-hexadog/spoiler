@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -105,16 +106,37 @@ export function Loading() {
 export function EmptyState({
   title,
   subtitle,
+  icon = 'albums-outline',
+  action,
 }: {
   title: string;
   subtitle?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  action?: { label: string; onPress: () => void };
 }) {
   return (
-    <View className="flex-1 items-center justify-center gap-2 p-6">
-      <Text className="text-fg text-[17px] font-semibold text-center">
+    <View className="flex-1 items-center justify-center gap-2 px-8 py-10">
+      <View
+        className="w-[74px] h-[74px] rounded-[20px] items-center justify-center mb-2"
+        style={{ backgroundColor: colors.surface }}
+      >
+        <Ionicons name={icon} size={34} color={colors.accent} />
+      </View>
+      <Text className="text-fg text-[17px] font-extrabold text-center">
         {title}
       </Text>
       {subtitle ? <Muted>{subtitle}</Muted> : null}
+      {action ? (
+        <Pressable
+          onPress={action.onPress}
+          className="mt-4 bg-accent rounded-xl px-6 py-3"
+          style={({ pressed }) => (pressed ? { opacity: 0.75 } : undefined)}
+        >
+          <Text className="text-accent-fg text-[14px] font-extrabold">
+            {action.label}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

@@ -449,6 +449,7 @@ export default function CalendarScreen() {
         </>
       ) : (
         <EmptyState
+          icon="calendar-outline"
           title="Rien à l'horizon"
           subtitle="Aucun épisode annoncé pour tes séries en cours."
         />

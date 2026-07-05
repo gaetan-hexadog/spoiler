@@ -123,6 +123,7 @@ export default function HistoryScreen() {
     return (
       <Screen>
         <EmptyState
+          icon="time-outline"
           title="Historique vide"
           subtitle="Marque des épisodes ou des films comme vus pour les retrouver ici."
         />

@@ -10,7 +10,7 @@ import { ShowGridCard } from '@/components/ShowGridCard';
 import { ShowProgressCard } from '@/components/ShowProgressCard';
 import { PosterGridSkeleton, RowListSkeleton } from '@/components/Skeleton';
 import { UpNextCard } from '@/components/UpNextCard';
-import { Button, EmptyState, Screen } from '@/components/ui';
+import { EmptyState, Screen } from '@/components/ui';
 import {
   useAllWatchedEpisodes,
   useTrackedShows,
@@ -310,8 +310,13 @@ export default function ShowsScreen() {
         {toolbar}
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <EmptyState
+            icon="albums-outline"
             title="Aucune série suivie"
             subtitle="Commence par en suivre quelques-unes — voilà ce qui cartonne en ce moment."
+            action={{
+              label: 'Explorer le catalogue',
+              onPress: () => router.push('/discover'),
+            }}
           />
           <Carousel
             title="Tendances de la semaine"
@@ -326,12 +331,6 @@ export default function ShowsScreen() {
               />
             )}
           />
-          <View className="p-6">
-            <Button
-              title="Explorer tout le catalogue"
-              onPress={() => router.push('/discover')}
-            />
-          </View>
         </ScrollView>
       </Screen>
     );

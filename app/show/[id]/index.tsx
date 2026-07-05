@@ -440,19 +440,28 @@ export default function ShowDetailScreen() {
               </Pressable>
             ) : null}
           </View>
-          {episodes.map((episode) => {
-            const isWatched = watched.has(
-              episodeKey(episode.season_number, episode.episode_number)
-            );
-            return (
-              <EpisodeCard
-                key={episode.id}
-                episode={episode}
-                watched={isWatched}
-                onToggleWatched={() => toggleEpisode(episode, isWatched)}
-              />
-            );
-          })}
+          {/* Desktop : liste d'épisodes en 2 colonnes ; mobile : 1 colonne. */}
+          <View className={isDesktop ? 'flex-row flex-wrap' : 'gap-3'}>
+            {episodes.map((episode) => {
+              const isWatched = watched.has(
+                episodeKey(episode.season_number, episode.episode_number)
+              );
+              const card = (
+                <EpisodeCard
+                  episode={episode}
+                  watched={isWatched}
+                  onToggleWatched={() => toggleEpisode(episode, isWatched)}
+                />
+              );
+              return isDesktop ? (
+                <View key={episode.id} style={{ width: '50%' }} className="px-1 pb-2">
+                  {card}
+                </View>
+              ) : (
+                <View key={episode.id}>{card}</View>
+              );
+            })}
+          </View>
         </View>
       )}
     </View>
@@ -537,8 +546,11 @@ export default function ShowDetailScreen() {
           </View>
 
           <View className="flex-row gap-8 px-8 -mt-24">
-            {/* Rail gauche : affiche + actions */}
-            <View className="w-52 gap-4">
+            {/* Rail gauche : affiche + actions (collant pendant le scroll). */}
+            <View
+              className="w-52 gap-4"
+              style={{ position: 'sticky', top: 16 } as object}
+            >
               {poster ? (
                 <Image
                   source={{ uri: poster }}
@@ -711,30 +723,11 @@ export default function ShowDetailScreen() {
 
         {tab === 'about' ? (
           <View className="gap-6 pb-4">
-            {/* Desktop : synopsis + note à gauche, plateformes à droite. */}
-            <View className={isDesktop ? 'flex-row gap-10 items-start' : 'gap-6'}>
-              <View className={`gap-6 ${isDesktop ? 'flex-[3]' : ''}`}>
-                {show.overview ? (
-                  <Text className="text-fg text-sm leading-[21px] opacity-90 px-4">
-                    {show.overview}
-                  </Text>
-                ) : null}
-                {trackedShow ? (
-                  <View className="px-4">
-                    <RatingStars
-                      value={trackedShow.rating}
-                      onChange={(rating) =>
-                        setRating.mutate({ tmdbId: showId, rating })
-                      }
-                    />
-                  </View>
-                ) : null}
-              </View>
-              <View className={`px-4 ${isDesktop ? 'flex-[2]' : ''}`}>
-                <WhereToWatch
-                  providers={show['watch/providers']?.results?.FR}
-                />
-              </View>
+            {/* Ordre : synopsis → Où regarder → note → casting → reco. */}
+            <View className="gap-5 px-4">
+              {synopsisEl}
+              <WhereToWatch providers={show['watch/providers']?.results?.FR} />
+              {ratingEl}
             </View>
             {show.credits?.cast?.length ? (
               <CastRow cast={show.credits.cast} />

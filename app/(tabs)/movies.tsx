@@ -204,8 +204,13 @@ export default function MoviesScreen() {
         )
       ) : (
         <EmptyState
+          icon="film-outline"
           title={movieFilter === 'watchlist' ? 'Watchlist vide' : 'Aucun film vu'}
           subtitle="Ajoute des films depuis l'onglet Découvrir."
+          action={{
+            label: 'Découvrir des films',
+            onPress: () => router.push('/discover'),
+          }}
         />
       )}
       {sheet}

@@ -316,16 +316,15 @@ export default function MovieDetailScreen() {
         </View>
 
         <View className="p-4 gap-4">
-          {/* Desktop : synopsis + actions à gauche, plateformes à droite. */}
           <View className={isDesktop ? 'flex-row gap-10 items-start' : 'gap-4'}>
             <View className={`gap-4 ${isDesktop ? 'flex-[3]' : ''}`}>
+              {/* Action-first : la barre d'actions passe avant le synopsis. */}
+              {actionsEl}
               {movie.overview ? (
                 <Text className="text-fg text-sm leading-[21px] opacity-90">
                   {movie.overview}
                 </Text>
               ) : null}
-
-              {actionsEl}
             </View>
             <View className={isDesktop ? 'flex-[2]' : ''}>
               <WhereToWatch providers={movie['watch/providers']?.results?.FR} />
