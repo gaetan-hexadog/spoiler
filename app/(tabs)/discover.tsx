@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Carousel } from '@/components/Carousel';
+import { FrostedHeader } from '@/components/FrostedHeader';
 import { PosterCard } from '@/components/PosterCard';
 import { EmptyState, Input, Loading, Screen } from '@/components/ui';
 import {
@@ -24,6 +25,7 @@ const CAROUSEL_WIDTH = 110;
 export default function DiscoverScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const [headerH, setHeaderH] = useState(0);
   const searching = query.trim().length > 1;
 
   const trendingShows = useTrendingShows();
@@ -68,37 +70,39 @@ export default function DiscoverScreen() {
 
   return (
     <Screen>
-      <View className="px-4 pt-3 pb-4 gap-3">
-        <Text className="text-fg text-2xl font-extrabold">Découvrir</Text>
-        <View className="relative justify-center">
-          <Input
-            placeholder="Rechercher une série ou un film…"
-            value={query}
-            onChangeText={setQuery}
-            autoCorrect={false}
-            style={{ paddingRight: 40 }}
-          />
-          {query.length > 0 ? (
-            <Pressable
-              onPress={() => setQuery('')}
-              className="absolute right-3"
-              hitSlop={8}
-            >
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={colors.textMuted}
-              />
-            </Pressable>
-          ) : null}
+      <FrostedHeader onHeight={setHeaderH}>
+        <View className="px-4 pt-3 pb-4 gap-3">
+          <Text className="text-fg text-2xl font-extrabold">Découvrir</Text>
+          <View className="relative justify-center">
+            <Input
+              placeholder="Rechercher une série ou un film…"
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+              style={{ paddingRight: 40 }}
+            />
+            {query.length > 0 ? (
+              <Pressable
+                onPress={() => setQuery('')}
+                className="absolute right-3"
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={colors.textMuted}
+                />
+              </Pressable>
+            ) : null}
+          </View>
         </View>
-      </View>
+      </FrostedHeader>
 
       {searching ? (
         searchShows.isLoading || searchMovies.isLoading ? (
           <Loading />
         ) : (
-          <ScrollView contentContainerStyle={{ paddingBottom: 32, gap: 24 }}>
+          <ScrollView contentContainerStyle={{ paddingTop: headerH, paddingBottom: 32, gap: 24 }}>
             <Carousel
               title="Séries"
               data={searchShows.items}
@@ -125,7 +129,7 @@ export default function DiscoverScreen() {
       ) : trendingShows.isLoading || trendingMovies.isLoading ? (
         <Loading />
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 32, gap: 28 }}>
+        <ScrollView contentContainerStyle={{ paddingTop: headerH, paddingBottom: 32, gap: 28 }}>
           <Carousel
             title="Séries tendances"
             data={trendingShows.items}

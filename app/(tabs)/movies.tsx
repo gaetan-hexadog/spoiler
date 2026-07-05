@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, Text } from 'react-native';
+import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { useActionSheet } from '@/components/ActionSheet';
+import { FrostedHeader } from '@/components/FrostedHeader';
 import { LibraryToolbar, type ToolbarOption } from '@/components/LibraryToolbar';
 import { MovieRowCard } from '@/components/MovieRowCard';
 import { PosterCard } from '@/components/PosterCard';
@@ -34,6 +35,7 @@ export default function MoviesScreen() {
   const [sort, setSort] = usePersistedState<Sort>('sort', 'activity');
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [headerH, setHeaderH] = useState(0);
   const searching = searchOpen && search.trim().length > 0;
   const columns = useGridColumns();
 
@@ -120,10 +122,13 @@ export default function MoviesScreen() {
     />
   );
 
+  const header = <FrostedHeader onHeight={setHeaderH}>{toolbar}</FrostedHeader>;
+
   if (movies.isLoading) {
     return (
       <Screen>
-        {toolbar}
+        {header}
+        <View style={{ height: headerH }} />
         {grid ? <PosterGridSkeleton /> : <RowListSkeleton />}
       </Screen>
     );
@@ -145,7 +150,7 @@ export default function MoviesScreen() {
 
   return (
     <Screen>
-      {toolbar}
+      {header}
       {filteredMovies.length ? (
         grid ? (
           <FlatList
@@ -153,7 +158,11 @@ export default function MoviesScreen() {
             data={filteredMovies}
             numColumns={columns}
             keyExtractor={(item) => String(item.tmdb_id)}
-            contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 32 }}
+            contentContainerStyle={{
+              paddingTop: headerH,
+              paddingHorizontal: 8,
+              paddingBottom: 32,
+            }}
             refreshControl={refreshControl}
             ListHeaderComponent={
               <Text className="text-fg text-lg font-bold px-4 pt-3 pb-3">
@@ -183,6 +192,7 @@ export default function MoviesScreen() {
             data={filteredMovies}
             keyExtractor={(item) => String(item.tmdb_id)}
             contentContainerStyle={{
+              paddingTop: headerH,
               paddingBottom: 32,
               width: '100%',
               maxWidth: 760,

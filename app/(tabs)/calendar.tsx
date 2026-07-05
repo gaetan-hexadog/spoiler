@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { CalendarEpisodeRow } from '@/components/CalendarEpisodeRow';
 import { CalendarWeekStrip } from '@/components/CalendarWeekStrip';
+import { FrostedHeader } from '@/components/FrostedHeader';
 import { RowListSkeleton } from '@/components/Skeleton';
 import { EmptyState, Screen } from '@/components/ui';
 import { useAllWatchedEpisodes, useTrackedShows } from '@/hooks/queries';
@@ -94,6 +95,7 @@ export default function CalendarScreen() {
   const router = useRouter();
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(isoToday());
+  const [headerH, setHeaderH] = useState(0);
   const isDesktop = useBreakpoint() === 'desktop';
   const listRef = useRef<SectionList<CalendarItem>>(null);
 
@@ -274,11 +276,12 @@ export default function CalendarScreen() {
         sectionIndex: todayIndex,
         itemIndex: 0,
         viewPosition: 0,
+        viewOffset: headerH,
         animated: false,
       });
     }, 350);
     return () => clearTimeout(timer);
-  }, [isDesktop, loading, sections.length, todayIndex]);
+  }, [isDesktop, loading, sections.length, todayIndex, headerH]);
 
   // Grille semaine (desktop) : les épisodes de la semaine affichée, par jour.
   const start = weekStartIso(weekOffset);
@@ -312,27 +315,53 @@ export default function CalendarScreen() {
       <View
         className={`flex-1 w-full self-center ${useWeekGrid ? '' : 'max-w-[760px]'}`}
       >
-      <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
-        <Text className="text-fg text-2xl font-extrabold">Calendrier</Text>
-        {useWeekGrid ? (
-          <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => setWeekOffset((o) => o - 1)} hitSlop={8}>
-              <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
-            </Pressable>
-            <Pressable onPress={() => setWeekOffset(0)}>
-              <Text className="text-fg text-sm font-semibold min-w-[110px] text-center">
-                {weekOffset === 0 ? 'Cette semaine' : weekLabel}
-              </Text>
-            </Pressable>
-            <Pressable onPress={() => setWeekOffset((o) => o + 1)} hitSlop={8}>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </Pressable>
-          </View>
+      <FrostedHeader onHeight={setHeaderH}>
+        <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
+          <Text className="text-fg text-2xl font-extrabold">Calendrier</Text>
+          {useWeekGrid ? (
+            <View className="flex-row items-center gap-3">
+              <Pressable onPress={() => setWeekOffset((o) => o - 1)} hitSlop={8}>
+                <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
+              </Pressable>
+              <Pressable onPress={() => setWeekOffset(0)}>
+                <Text className="text-fg text-sm font-semibold min-w-[110px] text-center">
+                  {weekOffset === 0 ? 'Cette semaine' : weekLabel}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => setWeekOffset((o) => o + 1)} hitSlop={8}>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textMuted}
+                />
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+        {/* La bande hebdo vit dans le header figé : la pastille du jour focusé
+            reste visible pendant le scroll de l'agenda. */}
+        {!useWeekGrid && sections.length ? (
+          <CalendarWeekStrip
+            weekStart={weekStartIso(0)}
+            today={today}
+            daysWithItems={daysWithItems}
+            selected={selectedDay}
+            onSelect={(iso) => {
+              setSelectedDay(iso);
+              const idx = sections.findIndex((s) => s.iso >= iso);
+              if (idx >= 0)
+                listRef.current?.scrollToLocation({
+                  sectionIndex: idx,
+                  itemIndex: 0,
+                  viewPosition: 0,
+                });
+            }}
+          />
         ) : null}
-      </View>
+      </FrostedHeader>
 
       {useWeekGrid ? (
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: headerH + 16 }}>
           <View className="flex-row gap-2">
             {weekDays.map((day) => {
               const d = new Date(`${day.iso}T00:00:00`);
@@ -404,29 +433,13 @@ export default function CalendarScreen() {
         </ScrollView>
       ) : sections.length ? (
         <>
-        <CalendarWeekStrip
-          weekStart={weekStartIso(0)}
-          today={today}
-          daysWithItems={daysWithItems}
-          selected={selectedDay}
-          onSelect={(iso) => {
-            setSelectedDay(iso);
-            const idx = sections.findIndex((s) => s.iso >= iso);
-            if (idx >= 0)
-              listRef.current?.scrollToLocation({
-                sectionIndex: idx,
-                itemIndex: 0,
-                viewPosition: 0,
-              });
-          }}
-        />
         <SectionList
           ref={listRef}
           sections={sections}
           keyExtractor={(item) =>
             `${item.showId}-${item.season}-${item.episode}`
           }
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingTop: headerH, paddingBottom: 32 }}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={viewabilityConfig}
           onScrollToIndexFailed={({ highestMeasuredFrameIndex }) => {
@@ -434,6 +447,7 @@ export default function CalendarScreen() {
               sectionIndex: Math.min(todayIndex, highestMeasuredFrameIndex),
               itemIndex: 0,
               viewPosition: 0,
+              viewOffset: headerH,
               animated: false,
             });
             setTimeout(() => {
@@ -441,6 +455,7 @@ export default function CalendarScreen() {
                 sectionIndex: todayIndex,
                 itemIndex: 0,
                 viewPosition: 0,
+                viewOffset: headerH,
                 animated: false,
               });
             }, 300);

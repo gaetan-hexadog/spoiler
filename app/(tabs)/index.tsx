@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Carousel } from '@/components/Carousel';
+import { FrostedHeader } from '@/components/FrostedHeader';
 import { HomeHero } from '@/components/HomeHero';
 import { LibraryToolbar, type ToolbarOption } from '@/components/LibraryToolbar';
 import { PosterCard } from '@/components/PosterCard';
@@ -52,6 +53,7 @@ export default function ShowsScreen() {
   const [sort, setSort] = usePersistedState<Sort>('sort', 'activity');
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [headerH, setHeaderH] = useState(0);
   const searching = searchOpen && search.trim().length > 0;
   const columns = useGridColumns();
 
@@ -225,10 +227,15 @@ export default function ShowsScreen() {
     />
   );
 
+  // La toolbar flotte en barre translucide ; le contenu défile dessous (on le
+  // rembourre de `headerH` en haut).
+  const header = <FrostedHeader onHeight={setHeaderH}>{toolbar}</FrostedHeader>;
+
   if (shows.isLoading || watched.isLoading) {
     return (
       <Screen>
-        {toolbar}
+        {header}
+        <View style={{ height: headerH }} />
         {grid ? <PosterGridSkeleton /> : <RowListSkeleton />}
       </Screen>
     );
@@ -307,8 +314,8 @@ export default function ShowsScreen() {
   if (!(shows.data ?? []).length) {
     return (
       <Screen>
-        {toolbar}
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        {header}
+        <ScrollView contentContainerStyle={{ paddingTop: headerH, paddingBottom: 32 }}>
           <EmptyState
             icon="albums-outline"
             title="Aucune série suivie"
@@ -338,7 +345,7 @@ export default function ShowsScreen() {
 
   return (
     <Screen>
-      {toolbar}
+      {header}
       {filteredShows.length || staleFooter ? (
         grid ? (
           <FlatList
@@ -346,7 +353,11 @@ export default function ShowsScreen() {
             data={filteredShows}
             numColumns={columns}
             keyExtractor={(item: TrackedShow) => String(item.tmdb_id)}
-            contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 32 }}
+            contentContainerStyle={{
+              paddingTop: headerH,
+              paddingHorizontal: 8,
+              paddingBottom: 32,
+            }}
             refreshControl={refreshControl}
             ListHeaderComponent={showsHeader}
             ListFooterComponent={staleFooter}
@@ -364,6 +375,7 @@ export default function ShowsScreen() {
             data={filteredShows}
             keyExtractor={(item: TrackedShow) => String(item.tmdb_id)}
             contentContainerStyle={{
+              paddingTop: headerH,
               paddingBottom: 32,
               width: '100%',
               maxWidth: 760,

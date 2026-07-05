@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { FrostedHeader } from '@/components/FrostedHeader';
 import { Muted, Screen } from '@/components/ui';
 import {
   useAllWatchedEpisodes,
@@ -38,6 +39,7 @@ function formatDuration(minutes: number): string {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const [headerH, setHeaderH] = useState(0);
   const { session } = useAuth();
   const profile = useProfile();
   const shows = useTrackedShows();
@@ -87,17 +89,9 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
-      <ScrollView
-        contentContainerStyle={{
-          padding: 16,
-          gap: 20,
-          width: '100%',
-          maxWidth: isDesktop ? 1000 : 720,
-          alignSelf: 'center',
-        }}
-      >
-        {/* En-tête : titre + accès Paramètres */}
-        <View className="flex-row items-center justify-between">
+      {/* En-tête figé translucide : titre + accès Paramètres */}
+      <FrostedHeader onHeight={setHeaderH}>
+        <View className="flex-row items-center justify-between px-4 py-3">
           <Text className="text-fg text-2xl font-extrabold">Profil</Text>
           <Pressable
             onPress={() => router.push('/settings')}
@@ -108,7 +102,17 @@ export default function ProfileScreen() {
             <Ionicons name="settings-outline" size={20} color={colors.text} />
           </Pressable>
         </View>
-
+      </FrostedHeader>
+      <ScrollView
+        contentContainerStyle={{
+          padding: 16,
+          paddingTop: headerH + 16,
+          gap: 20,
+          width: '100%',
+          maxWidth: isDesktop ? 1000 : 720,
+          alignSelf: 'center',
+        }}
+      >
         {/* Identité */}
         <View
           className={`gap-2 ${isDesktop ? 'flex-row items-center gap-4' : 'items-center'}`}
