@@ -18,20 +18,18 @@ import { EpisodeCard } from '@/components/EpisodeCard';
 import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
 import { NextEpisodeBanner } from '@/components/NextEpisodeBanner';
 import { PosterCard } from '@/components/PosterCard';
-import { RatingStars } from '@/components/RatingStars';
+import { ShowActionBar } from '@/components/ShowActionBar';
 import { DetailSkeleton } from '@/components/Skeleton';
 import { WhereToWatch } from '@/components/WhereToWatch';
-import { Button, ProgressBar, Screen } from '@/components/ui';
+import { ProgressBar, Screen } from '@/components/ui';
 import {
   useAllWatchedEpisodes,
   useMarkEpisode,
   useMarkEpisodesBulk,
   useSeasonDetails,
-  useSetShowRating,
   useSetShowStatus,
   useShowDetails,
   useShowRecommendations,
-  useTrackShow,
   useTrackedShows,
   useUntrackShow,
 } from '@/hooks/queries';
@@ -74,10 +72,8 @@ export default function ShowDetailScreen() {
   const details = useShowDetails(showId);
   const tracked = useTrackedShows();
   const watchedRows = useAllWatchedEpisodes();
-  const trackShow = useTrackShow();
   const untrackShow = useUntrackShow();
   const setStatus = useSetShowStatus();
-  const setRating = useSetShowRating();
   const markEpisode = useMarkEpisode();
   const markBulk = useMarkEpisodesBulk();
   const recommendations = useShowRecommendations(showId);
@@ -211,13 +207,6 @@ export default function ShowDetailScreen() {
       : STATUS_META[trackedShow.status]
     : null;
 
-  const follow = () =>
-    trackShow.mutate({
-      tmdb_id: show.id,
-      name: show.name,
-      poster_path: show.poster_path,
-      backdrop_path: show.backdrop_path,
-    });
   const unfollow = () =>
     openSheet({
       title: 'Ne plus suivre',
@@ -327,12 +316,8 @@ export default function ShowDetailScreen() {
     </Text>
   ) : null;
 
-  const ratingEl = trackedShow ? (
-    <RatingStars
-      value={trackedShow.rating}
-      onChange={(rating) => setRating.mutate({ tmdbId: showId, rating })}
-    />
-  ) : null;
+  // Barre d'actions unifiée (jumelle de MovieActionBar) : Suivie · À voir + note.
+  const actionBar = <ShowActionBar show={show} />;
 
   const whereEl = (
     <WhereToWatch providers={show['watch/providers']?.results?.FR} />
@@ -552,24 +537,16 @@ export default function ShowDetailScreen() {
                   className="w-52 aspect-[2/3] rounded-2xl border-2 border-line"
                 />
               ) : null}
-              {trackedShow ? (
+              {statusMeta ? (
                 <View className="flex-row items-center gap-2">
-                  {statusMeta ? (
-                    <View className={`px-3 py-1.5 rounded-full ${statusMeta.bg}`}>
-                      <Text className={`text-[12px] font-bold ${statusMeta.text}`}>
-                        {statusMeta.label}
-                      </Text>
-                    </View>
-                  ) : null}
+                  <View className={`px-3 py-1.5 rounded-full ${statusMeta.bg}`}>
+                    <Text className={`text-[12px] font-bold ${statusMeta.text}`}>
+                      {statusMeta.label}
+                    </Text>
+                  </View>
                 </View>
-              ) : (
-                <Button
-                  title="+ Suivre"
-                  loading={trackShow.isPending}
-                  onPress={follow}
-                />
-              )}
-              {ratingEl}
+              ) : null}
+              {actionBar}
               {whereEl}
             </View>
 
@@ -675,13 +652,7 @@ export default function ShowDetailScreen() {
         {nextBanner ? <View className="pt-3">{nextBanner}</View> : null}
 
         <View className="p-4 gap-4">
-          {!trackedShow ? (
-            <Button
-              title="+ Suivre cette série"
-              loading={trackShow.isPending}
-              onPress={follow}
-            />
-          ) : null}
+          {actionBar}
 
           <View
             className={`${isDesktop ? 'self-start' : ''} flex-row bg-surface rounded-lg p-[3px]`}
@@ -713,11 +684,11 @@ export default function ShowDetailScreen() {
 
         {tab === 'about' ? (
           <View className="gap-6 pb-4">
-            {/* Ordre : synopsis → Où regarder → note → casting → reco. */}
+            {/* Ordre : synopsis → Où regarder → casting → reco.
+                (La note est dans la barre d'actions en haut de fiche.) */}
             <View className="gap-5 px-4">
               {synopsisEl}
               <WhereToWatch providers={show['watch/providers']?.results?.FR} />
-              {ratingEl}
             </View>
             {show.credits?.cast?.length ? (
               <CastRow cast={show.credits.cast} />
