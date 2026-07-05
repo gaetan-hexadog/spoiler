@@ -376,12 +376,25 @@ console.log(finalSuspects.slice(0, 20).map((s) => `· « ${s.source} » → base
 if ((FIX && finalSuspects.length) || (ADD && missing.length)) {
   // Garde multi-comptes : ce script opère avec la clé service (tous les
   // utilisateurs) — on n'écrit que si la base ne contient qu'un seul user.
+  // user_id déduit de user_movies OU (table films vidée) de tracked_shows.
   const userIds = new Set(dbMovies.map((m) => m.user_id));
+  if (userIds.size === 0) {
+    const { data: shows, error: showsError } = await supabase
+      .from('tracked_shows')
+      .select('user_id')
+      .limit(1000);
+    if (showsError) throw new Error(showsError.message);
+    for (const s of shows ?? []) userIds.add(s.user_id);
+  }
   if (userIds.size > 1) {
     console.error('\nÉcriture refusée : plusieurs utilisateurs en base.');
     process.exit(1);
   }
-  const userId = dbMovies[0]?.user_id;
+  const userId = [...userIds][0];
+  if (!userId) {
+    console.error('\nÉcriture refusée : impossible de déterminer le user_id (base vide ?).');
+    process.exit(1);
+  }
   // Dates héritées des lignes remplacées (le bon film garde la date du faux).
   const dateFor = new Map();
   for (const s of finalSuspects) {
