@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Stack, useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  Alert,
   Image,
   Platform,
   Pressable,
@@ -146,6 +147,36 @@ export default function SettingsScreen() {
           label: 'Se déconnecter',
           variant: 'danger',
           onPress: () => supabase.auth.signOut(),
+        },
+      ],
+    });
+
+  const [deleting, setDeleting] = useState(false);
+  const confirmDeleteAccount = () =>
+    openSheet({
+      title: 'Supprimer le compte ?',
+      message:
+        'Toutes tes données (séries, films, historique, notes) seront définitivement effacées. Cette action est irréversible.',
+      actions: [
+        {
+          label: 'Tout supprimer',
+          variant: 'danger',
+          onPress: async () => {
+            setDeleting(true);
+            const { error } = await supabase.functions.invoke(
+              'delete-account',
+              { method: 'POST' }
+            );
+            if (error) {
+              setDeleting(false);
+              Alert.alert(
+                'Suppression impossible',
+                error.message ?? 'Réessaie plus tard.'
+              );
+              return;
+            }
+            await supabase.auth.signOut();
+          },
         },
       ],
     });
@@ -301,6 +332,20 @@ export default function SettingsScreen() {
             {dataGroup}
           </>
         )}
+
+        {/* Suppression de compte : de-emphasized mais présente. */}
+        <Pressable
+          onPress={confirmDeleteAccount}
+          disabled={deleting}
+          className="items-center mt-8"
+          style={({ pressed }) =>
+            pressed || deleting ? { opacity: 0.6 } : undefined
+          }
+        >
+          <Text className="text-danger text-[13px] font-semibold">
+            {deleting ? 'Suppression…' : 'Supprimer mon compte'}
+          </Text>
+        </Pressable>
 
         {footer}
       </ScrollView>
