@@ -200,7 +200,7 @@ export default function ProfileScreen() {
             style={{ width: 32, height: 32, opacity: 0.9 }}
             resizeMode="contain"
           />
-          <Muted>
+          <Muted className="text-center text-[11px]">
             PopcornLog v{Constants.expoConfig?.version ?? '1.0.0'}
             {Updates.updateId ? ` · maj ${Updates.updateId.slice(0, 8)}` : ''}
             {'\n'}Temps d'écran estimé (42 min/épisode, 1 h 50/film). Données

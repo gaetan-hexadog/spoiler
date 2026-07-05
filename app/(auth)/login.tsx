@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
   Alert,
@@ -63,6 +64,12 @@ export default function LoginScreen() {
               loading={loading}
               disabled={!email || !password}
             />
+            <Link
+              href="/signup"
+              className="text-accent text-center mt-1 text-sm font-semibold"
+            >
+              Pas encore de compte ? Créer un compte
+            </Link>
           </View>
         </View>
       </KeyboardAvoidingView>

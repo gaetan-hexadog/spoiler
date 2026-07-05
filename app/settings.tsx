@@ -283,18 +283,25 @@ export default function SettingsScreen() {
   );
 
   const footer = (
-    <View className="flex-row items-center justify-center gap-2.5 mt-9 mb-6">
-      <Image
-        source={require('../assets/logo.png')}
-        style={{ width: 28, height: 28, opacity: 0.9 }}
-        resizeMode="contain"
-      />
-      <Text className="text-muted text-[12px] font-semibold">
-        PopcornLog v{Constants.expoConfig?.version ?? '1.0.0'} · Données TMDB
-        {Platform.OS !== 'web' && Updates.updateId
-          ? ` · maj ${Updates.updateId.slice(0, 8)}`
-          : ''}
-      </Text>
+    <View className="items-center gap-3 mt-9 mb-6">
+      <Pressable onPress={() => router.push('/privacy')} hitSlop={8}>
+        <Text className="text-muted text-[12px] font-semibold underline">
+          Politique de confidentialité
+        </Text>
+      </Pressable>
+      <View className="flex-row items-center justify-center gap-2.5">
+        <Image
+          source={require('../assets/logo.png')}
+          style={{ width: 28, height: 28, opacity: 0.9 }}
+          resizeMode="contain"
+        />
+        <Text className="text-muted text-[11px] font-semibold">
+          PopcornLog v{Constants.expoConfig?.version ?? '1.0.0'} · Données TMDB
+          {Platform.OS !== 'web' && Updates.updateId
+            ? ` · maj ${Updates.updateId.slice(0, 8)}`
+            : ''}
+        </Text>
+      </View>
     </View>
   );
 

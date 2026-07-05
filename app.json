@@ -7,7 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hexadog.popcornlog",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,6 +36,12 @@
           "imageWidth": 160,
           "resizeMode": "contain",
           "backgroundColor": "#0D1321"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#FFD449"
         }
       ],
       "expo-font"

@@ -56,6 +56,7 @@ function AppShell() {
           <Stack.Screen name="history" options={{ title: 'Historique' }} />
           <Stack.Screen name="pair" options={{ title: 'Associer Kodi' }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="privacy" options={{ title: 'Confidentialité' }} />
         </Stack>
       </View>
     </View>
