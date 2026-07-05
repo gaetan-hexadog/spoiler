@@ -1,14 +1,7 @@
-import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  SectionList,
-  Text,
-  View,
-} from 'react-native';
-import { colors } from '@/lib/theme';
+import { ActivityIndicator, SectionList, Text, View } from 'react-native';
+import { HistoryRow } from '@/components/HistoryRow';
+import { HistoryStats } from '@/components/HistoryStats';
 import { RowListSkeleton } from '@/components/Skeleton';
 import { EmptyState, Screen } from '@/components/ui';
 import {
@@ -16,7 +9,8 @@ import {
   useMovies,
   useTrackedShows,
 } from '@/hooks/queries';
-import { imageUrl } from '@/lib/tmdb';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { colors } from '@/lib/theme';
 
 interface HistoryItem {
   key: string;
@@ -26,6 +20,15 @@ interface HistoryItem {
   detail: string;
   posterPath: string | null;
   watchedAt: string;
+}
+
+const EPISODE_MINUTES = 42;
+const MOVIE_MINUTES = 110;
+
+function fmtMins(mins: number): string {
+  const days = Math.floor(mins / 1440);
+  const h = Math.round((mins % 1440) / 60);
+  return days > 0 ? `${days} j ${h} h` : `${h} h`;
 }
 
 function dayLabel(iso: string): string {
@@ -50,10 +53,10 @@ function dayLabel(iso: string): string {
 const PAGE_SIZE = 150;
 
 export default function HistoryScreen() {
-  const router = useRouter();
   const episodes = useAllWatchedEpisodes();
   const shows = useTrackedShows();
   const movies = useMovies();
+  const isDesktop = useBreakpoint() === 'desktop';
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   // Liste plate triée, calculée une seule fois.
@@ -143,6 +146,14 @@ export default function HistoryScreen() {
           if (hasMore) setLimit((current) => current + PAGE_SIZE);
         }}
         onEndReachedThreshold={0.6}
+        ListHeaderComponent={
+          <View className={isDesktop ? 'px-4 pt-3 pb-1' : 'pt-3 pb-1'}>
+            <HistoryStats
+              items={allItems}
+              variant={isDesktop ? 'strip' : 'card'}
+            />
+          </View>
+        }
         ListFooterComponent={
           hasMore ? (
             <View className="py-5 items-center">
@@ -150,46 +161,30 @@ export default function HistoryScreen() {
             </View>
           ) : null
         }
-        renderSectionHeader={({ section }) => (
-          <Text className="text-accent text-[13px] font-bold px-4 pt-5 pb-2 capitalize">
-            {section.title}
-          </Text>
-        )}
-        renderItem={({ item }) => {
-          const uri = imageUrl(item.posterPath, 'w92');
+        renderSectionHeader={({ section }) => {
+          const count = section.data.length;
+          const mins = section.data.reduce(
+            (total, item) =>
+              total + (item.kind === 'movie' ? MOVIE_MINUTES : EPISODE_MINUTES),
+            0
+          );
           return (
-            <Pressable
-              onPress={() =>
-                router.push(
-                  item.kind === 'episode'
-                    ? `/show/${item.tmdbId}`
-                    : `/movie/${item.tmdbId}`
-                )
-              }
-              className="flex-row items-center gap-3 px-4 py-1.5"
-              style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
-            >
-              {uri ? (
-                <Image source={{ uri }} className="w-9 aspect-[2/3] rounded" />
-              ) : (
-                <View className="w-9 aspect-[2/3] rounded bg-surface" />
-              )}
-              <View className="flex-1">
-                <Text className="text-fg text-sm font-semibold" numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text className="text-muted text-xs">
-                  {item.detail}
-                  {' · '}
-                  {new Date(item.watchedAt).toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </View>
-            </Pressable>
+            <View className="flex-row items-center justify-between px-4 pt-5 pb-2 bg-bg">
+              <Text className="text-accent text-[13px] font-bold capitalize">
+                {section.title}
+              </Text>
+              <Text className="text-muted text-[11px] font-semibold">
+                {count} · {fmtMins(mins)}
+              </Text>
+            </View>
           );
         }}
+        renderItem={({ item, index, section }) => (
+          <HistoryRow
+            item={item}
+            isLast={index === section.data.length - 1}
+          />
+        )}
       />
     </Screen>
   );

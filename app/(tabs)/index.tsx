@@ -1,58 +1,42 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { useActionSheet } from '@/components/ActionSheet';
-import { BottomSheet } from '@/components/BottomSheet';
+import { FlatList, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Carousel } from '@/components/Carousel';
 import { HomeHero } from '@/components/HomeHero';
-import { MovieRowCard } from '@/components/MovieRowCard';
+import { LibraryToolbar, type ToolbarOption } from '@/components/LibraryToolbar';
 import { PosterCard } from '@/components/PosterCard';
 import { ShowGridCard } from '@/components/ShowGridCard';
 import { ShowProgressCard } from '@/components/ShowProgressCard';
 import { PosterGridSkeleton, RowListSkeleton } from '@/components/Skeleton';
 import { UpNextCard } from '@/components/UpNextCard';
-import { Button, EmptyState, Input, Screen } from '@/components/ui';
+import { Button, EmptyState, Screen } from '@/components/ui';
 import {
   useAllWatchedEpisodes,
-  useMovies,
-  useRemoveMovie,
-  useSetMovieStatus,
   useTrackedShows,
   useTrendingShows,
 } from '@/hooks/queries';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useGridColumns } from '@/hooks/useGridColumns';
 import { usePersistedState } from '@/hooks/usePersistedState';
-import type { UserMovie } from '@/lib/db';
-import type { MovieStatus, ShowStatus, TrackedShow } from '@/lib/db';
+import type { ShowStatus, TrackedShow } from '@/lib/db';
 import { episodeKey, isUpToDate } from '@/lib/progress';
 import { getShowDetails, type TmdbShowDetails } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
 
-type Segment = 'shows' | 'movies';
 type ShowFilter = ShowStatus | 'all' | 'uptodate';
+type Sort = 'activity' | 'added' | 'alpha' | 'rating';
 
 /** Sans visionnage depuis 30 jours → « À reprendre ». */
 const STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
-type Sort = 'activity' | 'added' | 'alpha' | 'rating';
 
-const SORTS: { value: Sort; label: string }[] = [
+const SORTS: ToolbarOption<Sort>[] = [
   { value: 'activity', label: 'Vu récemment' },
   { value: 'added', label: 'Ajout' },
   { value: 'alpha', label: 'A → Z' },
   { value: 'rating', label: 'Note' },
 ];
 
-const SHOW_FILTERS: { value: ShowFilter; label: string }[] = [
+const SHOW_FILTERS: ToolbarOption<ShowFilter>[] = [
   { value: 'watching', label: 'En cours' },
   { value: 'uptodate', label: 'À jour' },
   { value: 'planned', label: 'À commencer' },
@@ -61,63 +45,19 @@ const SHOW_FILTERS: { value: ShowFilter; label: string }[] = [
   { value: 'all', label: 'Toutes' },
 ];
 
-const MOVIE_FILTERS: { value: MovieStatus; label: string }[] = [
-  { value: 'watchlist', label: 'À voir' },
-  { value: 'watched', label: 'Vus' },
-];
-
-export default function LibraryScreen() {
+export default function ShowsScreen() {
   const router = useRouter();
-  const [segment, setSegment] = usePersistedState<Segment>('segment', 'shows');
   const [showFilter, setShowFilter] = useState<ShowFilter>('watching');
-  const [movieFilter, setMovieFilter] = useState<MovieStatus>('watchlist');
   const [grid, setGrid] = usePersistedState('grid', true);
   const [sort, setSort] = usePersistedState<Sort>('sort', 'activity');
-  const [sortModal, setSortModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const searching = searchOpen && search.trim().length > 0;
   const columns = useGridColumns();
-  const wide = useBreakpoint() !== 'mobile';
 
   const shows = useTrackedShows();
   const watched = useAllWatchedEpisodes();
-  const movies = useMovies();
   const trending = useTrendingShows();
-  const setMovieStatus = useSetMovieStatus();
-  const removeMovie = useRemoveMovie();
-  const { show: openSheet, sheet: movieSheet } = useActionSheet();
-
-  // Actions rapides film (long-press).
-  const openMovieActions = (movie: UserMovie) =>
-    openSheet({
-      title: movie.title,
-      actions: [
-        movie.status === 'watchlist'
-          ? {
-              label: '✓ Marquer comme vu',
-              variant: 'primary' as const,
-              onPress: () =>
-                setMovieStatus.mutate({
-                  tmdbId: movie.tmdb_id,
-                  status: 'watched',
-                }),
-            }
-          : {
-              label: 'Remettre dans la watchlist',
-              onPress: () =>
-                setMovieStatus.mutate({
-                  tmdbId: movie.tmdb_id,
-                  status: 'watchlist',
-                }),
-            },
-        {
-          label: 'Retirer de mes films',
-          variant: 'danger' as const,
-          onPress: () => removeMovie.mutate(movie.tmdb_id),
-        },
-      ],
-    });
 
   // Date du dernier épisode vu par série — sert au tri « Vu récemment ».
   const lastActivity = useMemo(() => {
@@ -146,7 +86,6 @@ export default function LibraryScreen() {
   }, [watched.data]);
 
   // Séries « à jour » : tout ce qui est diffusé est vu, mais la série continue.
-  // Nécessite les détails TMDB (partagés avec les cards, cache 1 h).
   const watchingShows = useMemo(
     () => (shows.data ?? []).filter((show) => show.status === 'watching'),
     [shows.data]
@@ -230,7 +169,10 @@ export default function LibraryScreen() {
         case 'added':
           return b.added_at.localeCompare(a.added_at);
         case 'rating':
-          return (b.rating ?? 0) - (a.rating ?? 0) || a.name.localeCompare(b.name, 'fr');
+          return (
+            (b.rating ?? 0) - (a.rating ?? 0) ||
+            a.name.localeCompare(b.name, 'fr')
+          );
         default:
           return (lastActivity.get(b.tmdb_id) ?? b.added_at).localeCompare(
             lastActivity.get(a.tmdb_id) ?? a.added_at
@@ -248,33 +190,7 @@ export default function LibraryScreen() {
     search,
   ]);
 
-  const filteredMovies = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const list = (movies.data ?? []).filter((movie) =>
-      searching
-        ? movie.title.toLowerCase().includes(query)
-        : movie.status === movieFilter
-    );
-    return [...list].sort((a, b) => {
-      switch (sort) {
-        case 'alpha':
-          return a.title.localeCompare(b.title, 'fr');
-        case 'added':
-          return b.added_at.localeCompare(a.added_at);
-        case 'rating':
-          return (
-            (b.rating ?? 0) - (a.rating ?? 0) ||
-            a.title.localeCompare(b.title, 'fr')
-          );
-        default:
-          return (b.watched_at ?? b.added_at).localeCompare(
-            a.watched_at ?? a.added_at
-          );
-      }
-    });
-  }, [movies.data, movieFilter, sort, searching, search]);
-
-  // « À voir ensuite » : séries en cours triées par activité récente.
+  // « Reprendre » / « Dans la foulée » : séries en cours triées par activité.
   const upNextShows = useMemo(
     () =>
       (shows.data ?? [])
@@ -288,27 +204,42 @@ export default function LibraryScreen() {
     [shows.data, lastActivity]
   );
 
-  // Le badge « Séries » compte ce qui a réellement des épisodes à voir.
-  const watchingCount = watchingShows.filter(
-    (show) => !upToDateIds.has(show.tmdb_id)
-  ).length;
-  const watchlistCount = (movies.data ?? []).filter(
-    (movie) => movie.status === 'watchlist'
-  ).length;
+  const toolbar = (
+    <LibraryToolbar
+      filters={SHOW_FILTERS}
+      activeFilter={showFilter}
+      onSelectFilter={setShowFilter}
+      sorts={SORTS}
+      sort={sort}
+      onSelectSort={setSort}
+      grid={grid}
+      onToggleGrid={() => setGrid(!grid)}
+      searchOpen={searchOpen}
+      onToggleSearch={() => {
+        if (searchOpen) setSearch('');
+        setSearchOpen(!searchOpen);
+      }}
+      search={search}
+      onChangeSearch={setSearch}
+      searchPlaceholder="Chercher dans mes séries…"
+    />
+  );
 
-  if (shows.isLoading || watched.isLoading || movies.isLoading) {
+  if (shows.isLoading || watched.isLoading) {
     return (
-      <Screen>{grid ? <PosterGridSkeleton /> : <RowListSkeleton />}</Screen>
+      <Screen>
+        {toolbar}
+        {grid ? <PosterGridSkeleton /> : <RowListSkeleton />}
+      </Screen>
     );
   }
 
   const refreshControl = (
     <RefreshControl
-      refreshing={shows.isRefetching || watched.isRefetching || movies.isRefetching}
+      refreshing={shows.isRefetching || watched.isRefetching}
       onRefresh={() => {
         shows.refetch();
         watched.refetch();
-        movies.refetch();
       }}
       tintColor={colors.accent}
     />
@@ -319,15 +250,6 @@ export default function LibraryScreen() {
     : `${
         SHOW_FILTERS.find((filter) => filter.value === showFilter)?.label ?? ''
       } · ${filteredShows.length}`;
-  const moviesTitle = searching
-    ? `Résultats · ${filteredMovies.length}`
-    : `${
-        MOVIE_FILTERS.find((filter) => filter.value === movieFilter)?.label ?? ''
-      } · ${filteredMovies.length}`;
-
-  const listTitle = (title: string) => (
-    <Text className="text-fg text-lg font-bold px-4 pt-3 pb-3">{title}</Text>
-  );
 
   const showsHeader = (
     <View>
@@ -336,9 +258,7 @@ export default function LibraryScreen() {
       ) : null}
       {upNextShows.length > 1 && !searching ? (
         <View className="gap-3 pt-2 pb-2">
-          <Text className="text-fg text-lg font-bold px-4">
-            Dans la foulée
-          </Text>
+          <Text className="text-fg text-lg font-bold px-4">Dans la foulée</Text>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -351,16 +271,15 @@ export default function LibraryScreen() {
           />
         </View>
       ) : null}
-      {listTitle(showsTitle)}
+      <Text className="text-fg text-lg font-bold px-4 pt-3 pb-3">
+        {showsTitle}
+      </Text>
     </View>
   );
 
   // Section « À reprendre » affichée sous « En cours » (pas un filtre à part).
   const staleFooter =
-    segment === 'shows' &&
-    showFilter === 'watching' &&
-    !searching &&
-    staleShows.length ? (
+    showFilter === 'watching' && !searching && staleShows.length ? (
       <View className="pt-5">
         <Text className="text-fg text-lg font-bold px-4 pb-3">
           À reprendre · {staleShows.length}
@@ -368,10 +287,7 @@ export default function LibraryScreen() {
         {grid ? (
           <View className="flex-row flex-wrap px-2">
             {staleShows.map((item) => (
-              <View
-                key={item.tmdb_id}
-                style={{ width: `${100 / columns}%` }}
-              >
+              <View key={item.tmdb_id} style={{ width: `${100 / columns}%` }}>
                 <ShowGridCard show={item} allWatched={watched.data ?? []} />
               </View>
             ))}
@@ -388,265 +304,10 @@ export default function LibraryScreen() {
       </View>
     ) : null;
 
-  const filterOptions: { value: string; label: string }[] =
-    segment === 'shows' ? SHOW_FILTERS : MOVIE_FILTERS;
-  const activeFilter = segment === 'shows' ? showFilter : movieFilter;
-
-  const sortModalElement = (
-    <BottomSheet visible={sortModal} onClose={() => setSortModal(false)}>
-      <Text className="text-fg text-lg font-bold mb-2">Afficher</Text>
-      {filterOptions.map((option) => {
-        const active = activeFilter === option.value;
-        return (
-          <Pressable
-            key={option.value}
-            onPress={() =>
-              segment === 'shows'
-                ? setShowFilter(option.value as ShowFilter)
-                : setMovieFilter(option.value as MovieStatus)
-            }
-            className="flex-row items-center justify-between py-3 border-b border-line/50"
-          >
-            <Text
-              className={`text-[15px] ${
-                active ? 'text-accent font-bold' : 'text-fg font-medium'
-              }`}
-            >
-              {option.label}
-            </Text>
-            {active ? (
-              <Ionicons name="checkmark" size={20} color={colors.accent} />
-            ) : null}
-          </Pressable>
-        );
-      })}
-
-      <Text className="text-fg text-lg font-bold mb-2 mt-6">Trier par</Text>
-      {SORTS.map((option) => (
-        <Pressable
-          key={option.value}
-          onPress={() => setSort(option.value)}
-          className="flex-row items-center justify-between py-3 border-b border-line/50"
-        >
-          <Text
-            className={`text-[15px] ${
-              sort === option.value
-                ? 'text-accent font-bold'
-                : 'text-fg font-medium'
-            }`}
-          >
-            {option.label}
-          </Text>
-          {sort === option.value ? (
-            <Ionicons name="checkmark" size={20} color={colors.accent} />
-          ) : null}
-        </Pressable>
-      ))}
-
-      <Pressable
-        onPress={() => setSortModal(false)}
-        className="mt-6 bg-accent rounded-xl py-3 items-center"
-        style={({ pressed }) => (pressed ? { opacity: 0.8 } : undefined)}
-      >
-        <Text className="text-accent-fg font-bold text-[15px]">Terminé</Text>
-      </Pressable>
-    </BottomSheet>
-  );
-
-  // Un filtre non-défaut est actif → le bouton filtre s'allume (les chips ont
-  // migré dans la modale, donc on signale l'état ici).
-  const filterActive =
-    segment === 'shows' ? showFilter !== 'watching' : movieFilter !== 'watchlist';
-
-  const actionButtons = (
-    <View className="flex-row gap-2">
-      <Pressable
-        onPress={() => {
-          if (searchOpen) setSearch('');
-          setSearchOpen(!searchOpen);
-        }}
-        hitSlop={6}
-        className={`w-9 h-9 rounded-lg items-center justify-center ${
-          searchOpen ? 'bg-accent' : 'bg-surface'
-        }`}
-      >
-        <Ionicons
-          name={searchOpen ? 'close' : 'search'}
-          size={16}
-          color={searchOpen ? colors.accentText : colors.text}
-        />
-      </Pressable>
-      <Pressable
-        onPress={() => setSortModal(true)}
-        hitSlop={6}
-        className={`w-9 h-9 rounded-lg items-center justify-center ${
-          filterActive ? 'bg-accent' : 'bg-surface'
-        }`}
-      >
-        <Ionicons
-          name="options-outline"
-          size={16}
-          color={filterActive ? colors.accentText : colors.text}
-        />
-      </Pressable>
-      <Pressable
-        onPress={() => setGrid(!grid)}
-        hitSlop={6}
-        className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
-      >
-        <Ionicons name={grid ? 'list' : 'grid'} size={16} color={colors.text} />
-      </Pressable>
-    </View>
-  );
-
-  const segmentControl = (
-    <View
-      className={`${wide ? '' : 'flex-1'} flex-row bg-surface rounded-lg p-[3px]`}
-    >
-      {(
-        [
-          ['shows', 'Séries', watchingCount],
-          ['movies', 'Films', watchlistCount],
-        ] as [Segment, string, number][]
-      ).map(([value, label, count]) => {
-        const active = segment === value;
-        return (
-          <Pressable
-            key={value}
-            onPress={() => setSegment(value)}
-            className={`${wide ? 'px-6' : 'flex-1'} py-2 rounded-md flex-row items-center justify-center gap-1.5 ${
-              active ? 'bg-accent' : ''
-            }`}
-          >
-            <Text
-              className={`font-bold text-sm ${
-                active ? 'text-accent-fg' : 'text-muted'
-              }`}
-            >
-              {label}
-            </Text>
-            {count > 0 ? (
-              <View
-                className={`px-1.5 py-0.5 rounded-full min-w-[20px] items-center ${
-                  active ? 'bg-accent-fg/15' : 'bg-surface-light'
-                }`}
-              >
-                <Text
-                  className={`text-[11px] font-bold ${
-                    active ? 'text-accent-fg' : 'text-muted'
-                  }`}
-                >
-                  {count}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-
-  const searchInput = (
-    <Input
-      placeholder={
-        segment === 'shows'
-          ? 'Chercher dans mes séries…'
-          : 'Chercher dans mes films…'
-      }
-      value={search}
-      onChangeText={setSearch}
-      autoFocus
-      autoCorrect={false}
-    />
-  );
-
-  // Header compact unifié (mobile + desktop) : segment Séries/Films + actions
-  // sur une seule ligne. Filtres et tri vivent dans la modale (bouton options).
-  const header = (
-    <View className="px-4 pt-3 pb-3 gap-3">
-      <View className="flex-row items-center gap-2.5">
-        {segmentControl}
-        {wide ? (
-          searchOpen ? (
-            <View className="flex-1">{searchInput}</View>
-          ) : (
-            <View className="flex-1" />
-          )
-        ) : null}
-        {actionButtons}
-      </View>
-      {!wide && searchOpen ? searchInput : null}
-    </View>
-  );
-
-  if (segment === 'movies') {
-    return (
-      <Screen>
-        {header}
-        {filteredMovies.length ? (
-          grid ? (
-            <FlatList
-              key={`movies-grid-${columns}`}
-              data={filteredMovies}
-              numColumns={columns}
-              keyExtractor={(item) => String(item.tmdb_id)}
-              contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 32 }}
-              refreshControl={refreshControl}
-              ListHeaderComponent={listTitle(moviesTitle)}
-              renderItem={({ item }) => (
-                <PosterCard
-                  title={item.title}
-                  posterPath={item.poster_path}
-                  subtitle={
-                    item.rating
-                      ? `★ ${item.rating}/10`
-                      : item.status === 'watched'
-                        ? 'Vu'
-                        : undefined
-                  }
-                  columns={columns}
-                  onPress={() => router.push(`/movie/${item.tmdb_id}`)}
-                  onLongPress={() => openMovieActions(item)}
-                />
-              )}
-            />
-          ) : (
-            <FlatList
-              key="movies-list"
-              data={filteredMovies}
-              keyExtractor={(item) => String(item.tmdb_id)}
-              contentContainerStyle={{
-                paddingBottom: 32,
-                width: '100%',
-                maxWidth: 760,
-                alignSelf: 'center',
-              }}
-              refreshControl={refreshControl}
-              ListHeaderComponent={listTitle(moviesTitle)}
-              renderItem={({ item }) => (
-                <MovieRowCard
-                  movie={item}
-                  onLongPress={() => openMovieActions(item)}
-                />
-              )}
-            />
-          )
-        ) : (
-          <EmptyState
-            title={movieFilter === 'watchlist' ? 'Watchlist vide' : 'Aucun film vu'}
-            subtitle="Ajoute des films depuis l'onglet Découvrir."
-          />
-        )}
-        {sortModalElement}
-        {movieSheet}
-      </Screen>
-    );
-  }
-
   if (!(shows.data ?? []).length) {
     return (
       <Screen>
-        {header}
+        {toolbar}
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <EmptyState
             title="Aucune série suivie"
@@ -672,14 +333,13 @@ export default function LibraryScreen() {
             />
           </View>
         </ScrollView>
-        {sortModalElement}
       </Screen>
     );
   }
 
   return (
     <Screen>
-      {header}
+      {toolbar}
       {filteredShows.length || staleFooter ? (
         grid ? (
           <FlatList
@@ -721,7 +381,6 @@ export default function LibraryScreen() {
       ) : (
         <EmptyState title="Rien dans ce filtre" />
       )}
-      {sortModalElement}
     </Screen>
   );
 }

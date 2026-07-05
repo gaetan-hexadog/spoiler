@@ -6,7 +6,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/lib/theme';
 
 const ITEMS = [
-  { href: '/', icon: 'albums', match: (p: string) => p === '/' },
+  { href: '/', icon: 'tv', match: (p: string) => p === '/' },
+  {
+    href: '/movies',
+    icon: 'film',
+    match: (p: string) => p.startsWith('/movies'),
+  },
   {
     href: '/calendar',
     icon: 'calendar',

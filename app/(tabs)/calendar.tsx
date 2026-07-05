@@ -10,6 +10,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import { CalendarEpisodeRow } from '@/components/CalendarEpisodeRow';
+import { CalendarWeekStrip } from '@/components/CalendarWeekStrip';
 import { RowListSkeleton } from '@/components/Skeleton';
 import { EmptyState, Screen } from '@/components/ui';
 import { useAllWatchedEpisodes, useTrackedShows } from '@/hooks/queries';
@@ -91,6 +93,7 @@ const WEEKDAYS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 export default function CalendarScreen() {
   const router = useRouter();
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(isoToday());
   const isDesktop = useBreakpoint() === 'desktop';
   const listRef = useRef<SectionList<CalendarItem>>(null);
   const shows = useTrackedShows();
@@ -204,6 +207,12 @@ export default function CalendarScreen() {
     const ceil = addDays(isoToday(), 180);
     return items.filter((i) => i.airDate >= floor && i.airDate <= ceil);
   }, [items]);
+
+  // Jours (de la semaine affichée) ayant au moins une sortie → pastille.
+  const daysWithItems = useMemo(
+    () => new Set(boundedItems.map((i) => i.airDate)),
+    [boundedItems]
+  );
 
   // Calendrier continu : passé + futur, une seule timeline chronologique.
   const { sections, todayIndex } = useMemo(() => {
@@ -330,15 +339,18 @@ export default function CalendarScreen() {
                     </Text>
                   </View>
                   <View className="gap-1.5">
-                    {day.items.map((item) => {
+                    {day.items.map((item, i) => {
                       const uri = imageUrl(item.posterPath, 'w185');
+                      const highlight = isToday && i === 0;
                       return (
                         <Pressable
                           key={`${item.showId}-${item.season}-${item.episode}`}
                           onPress={() =>
                             router.push(`/show/${item.showId}?tab=episodes`)
                           }
-                          className="bg-surface rounded-lg overflow-hidden"
+                          className={`bg-surface rounded-lg overflow-hidden ${
+                            highlight ? 'border border-accent' : ''
+                          }`}
                           style={({ pressed }) =>
                             pressed ? { opacity: 0.8 } : undefined
                           }
@@ -349,6 +361,13 @@ export default function CalendarScreen() {
                                 source={{ uri }}
                                 className="w-full h-full"
                               />
+                            ) : null}
+                            {highlight ? (
+                              <View className="absolute top-1 left-1 bg-accent px-1.5 py-0.5 rounded">
+                                <Text className="text-accent-fg text-[8px] font-extrabold">
+                                  CE SOIR
+                                </Text>
+                              </View>
                             ) : null}
                           </View>
                           <View className="p-1.5">
@@ -373,6 +392,23 @@ export default function CalendarScreen() {
           </View>
         </ScrollView>
       ) : sections.length ? (
+        <>
+        <CalendarWeekStrip
+          weekStart={weekStartIso(0)}
+          today={today}
+          daysWithItems={daysWithItems}
+          selected={selectedDay}
+          onSelect={(iso) => {
+            setSelectedDay(iso);
+            const idx = sections.findIndex((s) => s.iso >= iso);
+            if (idx >= 0)
+              listRef.current?.scrollToLocation({
+                sectionIndex: idx,
+                itemIndex: 0,
+                viewPosition: 0,
+              });
+          }}
+        />
         <SectionList
           ref={listRef}
           sections={sections}
@@ -406,57 +442,11 @@ export default function CalendarScreen() {
               </Text>
             );
           }}
-          renderItem={({ item }) => {
-            const uri = imageUrl(item.posterPath, 'w185');
-            const isPast = item.airDate < today;
-            return (
-              <Pressable
-                onPress={() =>
-                  router.push(`/show/${item.showId}?tab=episodes`)
-                }
-                className="flex-row items-center bg-surface rounded-2xl p-3 mx-4 mb-3 gap-3"
-                style={({ pressed }) =>
-                  pressed ? { opacity: 0.8 } : undefined
-                }
-              >
-                {uri ? (
-                  <Image
-                    source={{ uri }}
-                    className="w-11 aspect-[2/3] rounded-md"
-                  />
-                ) : (
-                  <View className="w-11 aspect-[2/3] rounded-md bg-surface-light" />
-                )}
-                <View className="flex-1 gap-0.5">
-                  <Text
-                    className="text-fg text-[15px] font-bold"
-                    numberOfLines={1}
-                  >
-                    {item.showName}
-                  </Text>
-                  <Text className="text-muted text-[13px]" numberOfLines={1}>
-                    S{String(item.season).padStart(2, '0')}E
-                    {String(item.episode).padStart(2, '0')}
-                    {item.episodeName ? ` · ${item.episodeName}` : ''}
-                  </Text>
-                </View>
-                {isPast ? (
-                  <Ionicons
-                    name={item.watched ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={24}
-                    color={item.watched ? colors.accent : colors.textMuted}
-                  />
-                ) : (
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                )}
-              </Pressable>
-            );
-          }}
+          renderItem={({ item }) => (
+            <CalendarEpisodeRow item={item} today={today} />
+          )}
         />
+        </>
       ) : (
         <EmptyState
           title="Rien à l'horizon"

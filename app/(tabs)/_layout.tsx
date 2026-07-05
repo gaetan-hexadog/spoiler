@@ -16,7 +16,8 @@ import { colors } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 const TABS = [
-  { name: 'index', href: '/' as const, icon: 'albums', label: 'Ma liste' },
+  { name: 'index', href: '/' as const, icon: 'tv', label: 'Séries' },
+  { name: 'movies', href: '/movies' as const, icon: 'film', label: 'Films' },
   {
     name: 'calendar',
     href: '/calendar' as const,
