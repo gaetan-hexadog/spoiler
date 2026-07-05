@@ -3,6 +3,7 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import type { View as RNView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { colors } from '@/lib/theme';
@@ -44,10 +45,17 @@ export function FloatingHeader({
   right,
   scrolled,
   title,
+  blurTarget,
 }: {
   right?: React.ReactNode;
   scrolled?: boolean;
   title?: string;
+  /**
+   * Réf vers le <BlurTargetView> qui entoure le contenu à flouter. INDISPENSABLE
+   * pour un vrai flou sur Android avec expo-blur v57 (sur web/iOS le flou est
+   * automatique et cette réf est ignorée).
+   */
+  blurTarget?: React.RefObject<RNView | null>;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -73,22 +81,23 @@ export function FloatingHeader({
               // natif et on ne voit ni fond ni flou. On reste sous les boutons
               // (z-10) et le titre (z-11).
               zIndex: 9,
-              // Teinte sombre : donne la couleur du header. On la garde assez
-              // dense (le flou lourd par-dessus fait le reste : le contenu
-              // derrière est brouillé, donc ça ne « voit pas au travers »).
-              backgroundColor: 'rgba(13,19,33,0.78)',
+              // Teinte légère seulement : c'est le FLOU qui doit dominer (verre
+              // dépoli), pas un aplat opaque. Trop d'opacité = « bg trop opaque »
+              // et le flou ne se voit plus.
+              backgroundColor: 'rgba(13,19,33,0.5)',
               borderBottomWidth: 1,
               borderBottomColor: colors.border,
             },
             fade,
           ]}
         >
-          {/* experimentalBlurMethod est INDISPENSABLE pour un vrai flou sur
-              Android (sinon expo-blur ne pose qu'une teinte plate). */}
+          {/* blurMethod + blurTarget : requis par expo-blur v57 pour un vrai
+              flou sur Android (cf. doc officielle). Web/iOS : flou automatique. */}
           <BlurView
-            intensity={64}
+            intensity={70}
             tint="dark"
-            experimentalBlurMethod="dimezisBlurView"
+            blurMethod="dimezisBlurView"
+            blurTarget={blurTarget}
             style={StyleSheet.absoluteFill}
           />
         </Reanimated.View>
@@ -100,10 +109,12 @@ export function FloatingHeader({
           style={[
             {
               position: 'absolute',
-              top: insets.top + 14,
-              left: 64,
-              right: 64,
-              textAlign: 'center',
+              top: insets.top + 16,
+              // Réserve la place des boutons : back (~52) à gauche, et jusqu'à
+              // deux boutons ronds (~104) à droite. Le titre tronque avant eux.
+              left: 60,
+              right: 112,
+              textAlign: 'left',
               color: colors.text,
               fontSize: 16,
               fontWeight: '800',

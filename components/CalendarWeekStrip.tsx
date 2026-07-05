@@ -47,8 +47,12 @@ export function CalendarWeekStrip({
           <Pressable
             key={iso}
             onPress={() => onSelect(iso)}
-            className={`flex-1 items-center py-2 rounded-xl ${
-              isToday ? 'bg-accent' : isSelected ? 'bg-surface' : ''
+            className={`flex-1 items-center py-2 rounded-xl border ${
+              isToday
+                ? 'bg-accent border-accent'
+                : isSelected
+                  ? 'bg-surface border-accent/70'
+                  : 'border-transparent'
             }`}
           >
             <Text

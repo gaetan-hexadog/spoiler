@@ -96,6 +96,17 @@ export default function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState(isoToday());
   const isDesktop = useBreakpoint() === 'desktop';
   const listRef = useRef<SectionList<CalendarItem>>(null);
+
+  // Le jour « focusé » suit le scroll : la pastille de la bande hebdo glisse
+  // sur le jour dont la section est en haut de liste (dynamise l'écran).
+  const onViewable = useRef(
+    ({ viewableItems }: { viewableItems: { section?: { iso: string } }[] }) => {
+      const iso = viewableItems.find((v) => v.section)?.section?.iso;
+      if (iso) setSelectedDay((prev) => (prev === iso ? prev : iso));
+    }
+  ).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 40 }).current;
+
   const shows = useTrackedShows();
   const watchedRows = useAllWatchedEpisodes();
 
@@ -416,6 +427,8 @@ export default function CalendarScreen() {
             `${item.showId}-${item.season}-${item.episode}`
           }
           contentContainerStyle={{ paddingBottom: 32 }}
+          onViewableItemsChanged={onViewable}
+          viewabilityConfig={viewabilityConfig}
           onScrollToIndexFailed={({ highestMeasuredFrameIndex }) => {
             listRef.current?.scrollToLocation({
               sectionIndex: Math.min(todayIndex, highestMeasuredFrameIndex),

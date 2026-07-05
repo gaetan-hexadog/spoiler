@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurTargetView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Image,
   Linking,
@@ -64,6 +65,7 @@ export default function ShowDetailScreen() {
   const showId = Number(params.id);
   const router = useRouter();
   const { scrolled, scrollProps } = useHeaderScroll();
+  const blurTarget = useRef<View>(null);
   const [tab, setTab] = useState<Tab>(
     params.tab === 'episodes' ? 'episodes' : 'about'
   );
@@ -211,24 +213,18 @@ export default function ShowDetailScreen() {
       : STATUS_META[trackedShow.status]
     : null;
 
-  const unfollow = () =>
-    openSheet({
-      title: 'Ne plus suivre',
-      message: 'La série et tous tes épisodes vus seront supprimés.',
-      actions: [
-        {
-          label: 'Supprimer',
-          variant: 'danger',
-          onPress: () => untrackShow.mutate(showId),
-        },
-      ],
-    });
-
   // --- Modèle d'action (jumeau de la fiche film) : deux boutons ronds dans le
-  // header, À voir · Suivie. Actif = plein accent ; ré-appui sur l'actif retire.
-  // « Suivie » = série démarrée (watching/completed/stopped) ; « À voir » = planned.
-  const following = !!trackedShow && trackedShow.status !== 'planned';
+  // header, À voir · Suivie. Actif = plein accent ; ré-appui sur l'actif = on
+  // arrête sans rien perdre.
+  //   « Suivie » = en cours / terminée (watching|completed)
+  //   « À voir » = planifiée (planned)
+  //   « Arrêtée » (stopped) = les DEUX inactifs, mais la série et TOUT
+  //     l'historique d'épisodes restent en base (on peut re-suivre plus tard).
+  const following =
+    trackedShow?.status === 'watching' || trackedShow?.status === 'completed';
   const planned = trackedShow?.status === 'planned';
+  // « démarrée » = suivie OU arrêtée : dans les deux cas on a pu la noter.
+  const started = !!trackedShow && trackedShow.status !== 'planned';
 
   const setStatusOrTrack = (status: 'watching' | 'planned') => {
     if (trackedShow) setStatus.mutate({ tmdbId: showId, status });
@@ -241,9 +237,12 @@ export default function ShowDetailScreen() {
         status,
       });
   };
-  // Retirer une série suivie supprime tout l'historique d'épisodes : on confirme.
+  // Arrêter de suivre = passer en « Arrêtée » (garde l'historique). La
+  // suppression totale (série + logs) reste au long-press dans les listes.
   const toggleFollowing = () =>
-    following ? unfollow() : setStatusOrTrack('watching');
+    following
+      ? setStatus.mutate({ tmdbId: showId, status: 'stopped' })
+      : setStatusOrTrack('watching');
   const togglePlanned = () =>
     planned ? untrackShow.mutate(showId) : setStatusOrTrack('planned');
 
@@ -262,8 +261,8 @@ export default function ShowDetailScreen() {
     </>
   );
 
-  // La note apparaît d'elle-même une fois la série suivie (bloc partagé).
-  const ratingEl = following ? (
+  // La note apparaît une fois la série démarrée (suivie ou arrêtée).
+  const ratingEl = started ? (
     <RatingField
       value={trackedShow?.rating ?? null}
       onChange={(rating) => setRating.mutate({ tmdbId: showId, rating })}
@@ -595,7 +594,13 @@ export default function ShowDetailScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
       {sheet}
-      <FloatingHeader scrolled={scrolled} title={show.name} right={headerRight} />
+      <FloatingHeader
+        scrolled={scrolled}
+        title={show.name}
+        right={headerRight}
+        blurTarget={blurTarget}
+      />
+      <BlurTargetView ref={blurTarget} collapsable={false} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }} {...scrollProps}>
         <View
           className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
@@ -820,6 +825,7 @@ export default function ShowDetailScreen() {
           </View>
         )}
       </ScrollView>
+      </BlurTargetView>
     </Screen>
   );
 }

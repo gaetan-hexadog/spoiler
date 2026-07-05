@@ -1,7 +1,8 @@
+import { BlurTargetView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   Image,
   Linking,
@@ -38,6 +39,7 @@ export default function MovieDetailScreen() {
 
   const router = useRouter();
   const { scrolled, scrollProps } = useHeaderScroll();
+  const blurTarget = useRef<View>(null);
   const isDesktop = useBreakpoint() === 'desktop';
   const details = useMovieDetails(movieId);
   const movies = useMovies();
@@ -257,7 +259,9 @@ export default function MovieDetailScreen() {
         scrolled={scrolled}
         title={movie.title}
         right={headerRight}
+        blurTarget={blurTarget}
       />
+      <BlurTargetView ref={blurTarget} collapsable={false} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }} {...scrollProps}>
         <View
           className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
@@ -349,6 +353,7 @@ export default function MovieDetailScreen() {
           ) : null}
         </View>
       </ScrollView>
+      </BlurTargetView>
     </Screen>
   );
 }
