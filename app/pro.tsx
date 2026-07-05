@@ -33,6 +33,16 @@ const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: stri
     sub: 'Tes prochaines diffusions dans ton agenda (.ics).',
   },
   {
+    icon: 'tv',
+    title: 'Scrobbling Kodi',
+    sub: 'Associe Kodi : tout ce que tu y regardes est marqué vu ici.',
+  },
+  {
+    icon: 'cloud-upload',
+    title: 'Sauvegarde de tes données',
+    sub: 'Export JSON complet vers Google Drive, Files… en un tap.',
+  },
+  {
     icon: 'color-palette',
     title: 'Thèmes & icônes',
     sub: 'Personnalise l’apparence et l’icône de l’app.',

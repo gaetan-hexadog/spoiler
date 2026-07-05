@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useRef } from 'react';
 import { Image, ScrollView, Text, View } from 'react-native';
 import { useHeaderScroll } from '@/hooks/useHeaderScroll';
+import { AddToListButton } from '@/components/AddToListSheet';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
 import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
@@ -100,6 +101,12 @@ export default function MovieDetailScreen() {
 
   const headerRight = (
     <>
+      <AddToListButton
+        mediaType="movie"
+        tmdbId={movie.id}
+        title={movie.title}
+        posterPath={movie.poster_path}
+      />
       <FloatingButton
         icon={inWatchlist ? 'bookmark' : 'bookmark-outline'}
         active={inWatchlist}

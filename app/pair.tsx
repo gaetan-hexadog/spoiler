@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
-import { Button, Input, Muted, Screen } from '@/components/ui';
+import { Button, EmptyState, Input, Muted, Screen } from '@/components/ui';
+import { usePro } from '@/hooks/usePro';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
 
 export default function PairDeviceScreen() {
+  const router = useRouter();
+  const { isPro } = usePro();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -14,14 +18,11 @@ export default function PairDeviceScreen() {
   async function pair() {
     setLoading(true);
     setError(null);
+    // Le jeton TMDB du plugin est injecté côté serveur (secret Supabase) :
+    // le bundle de l'app n'en contient plus.
     const { data, error: fnError } = await supabase.functions.invoke(
       'pair-device',
-      {
-        body: {
-          code: code.trim().toUpperCase(),
-          tmdb_token: process.env.EXPO_PUBLIC_TMDB_TOKEN ?? null,
-        },
-      }
+      { body: { code: code.trim().toUpperCase() } }
     );
     setLoading(false);
     if (fnError || data?.error) {
@@ -40,6 +41,21 @@ export default function PairDeviceScreen() {
       return;
     }
     setDone(true);
+  }
+
+  // Scrobbling Kodi = fonctionnalité Pro (le plugin lui-même ne change pas :
+  // c'est l'association d'un nouvel appareil qui est réservée).
+  if (!isPro) {
+    return (
+      <Screen>
+        <EmptyState
+          icon="tv-outline"
+          title="Scrobbling Kodi"
+          subtitle="Associe Kodi à ton compte : tout ce que tu regardes là-bas est marqué vu ici, automatiquement. C'est une fonctionnalité Pro."
+          action={{ label: 'Découvrir Pro', onPress: () => router.push('/pro') }}
+        />
+      </Screen>
+    );
   }
 
   return (

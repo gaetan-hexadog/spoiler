@@ -2,7 +2,8 @@ import '../global.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { restoreAccentTheme } from '@/lib/accentThemes';
 import { View } from 'react-native';
 import { SafeAreaListener } from 'react-native-safe-area-context';
 import { Uniwind } from 'uniwind';
@@ -65,6 +66,11 @@ function AppShell() {
 }
 
 export default function RootLayout() {
+  // Ré-applique le thème d'accent persisté (Pro) dès le démarrage.
+  useEffect(() => {
+    restoreAccentTheme().catch(() => {});
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

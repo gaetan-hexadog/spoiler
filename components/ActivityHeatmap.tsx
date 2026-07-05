@@ -12,10 +12,13 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
  */
 export function ActivityHeatmap({
   allWatched,
+  year: yearProp,
 }: {
   allWatched: WatchedEpisode[];
+  /** Année affichée (défaut : année en cours) — utilisé par le bilan /stats. */
+  year?: number;
 }) {
-  const year = new Date().getFullYear();
+  const year = yearProp ?? new Date().getFullYear();
 
   const { counts, total, currentWeek } = useMemo(() => {
     const start = new Date(year, 0, 1).getTime();
@@ -50,7 +53,14 @@ export function ActivityHeatmap({
         <Text className="text-muted text-xs">{total} épisodes</Text>
       </View>
       <View className="flex-row flex-wrap gap-1">
-        {counts.slice(0, currentWeek + 1).map((n, i) => (
+        {counts
+          .slice(
+            0,
+            // Année passée : les 53 semaines ; année en cours : jusqu'à
+            // aujourd'hui seulement.
+            year < new Date().getFullYear() ? 53 : currentWeek + 1
+          )
+          .map((n, i) => (
           <View
             key={i}
             style={{

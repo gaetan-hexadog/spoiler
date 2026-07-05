@@ -271,3 +271,126 @@ export async function removeMovie(tmdbId: number): Promise<void> {
     .eq('tmdb_id', tmdbId);
   throwIfError(error);
 }
+
+/**
+ * Écriture d'IMPORT (TV Time…) : n'insère que si le film est absent.
+ * Contrairement à addMovie, un ré-import n'écrase JAMAIS un film existant
+ * (statut watchlist, note et date de visionnage sont préservés).
+ */
+export async function importMovieWatched(movie: {
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+}): Promise<void> {
+  const { error } = await supabase.from('user_movies').upsert(
+    {
+      ...movie,
+      status: 'watched' as MovieStatus,
+      watched_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,tmdb_id', ignoreDuplicates: true }
+  );
+  throwIfError(error);
+}
+
+// --- Listes personnalisées (Pro) ----------------------------------------------
+
+export type ListMediaType = 'show' | 'movie';
+
+export interface UserList {
+  id: number;
+  user_id: string;
+  name: string;
+  emoji: string | null;
+  created_at: string;
+}
+
+export interface ListItem {
+  id: number;
+  user_id: string;
+  list_id: number;
+  media_type: ListMediaType;
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  added_at: string;
+}
+
+export async function fetchLists(): Promise<UserList[]> {
+  const { data, error } = await supabase
+    .from('user_lists')
+    .select('*')
+    .order('created_at', { ascending: true });
+  throwIfError(error);
+  return (data ?? []) as UserList[];
+}
+
+export async function createList(
+  name: string,
+  emoji: string | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_lists')
+    .insert({ name: name.trim(), emoji });
+  throwIfError(error);
+}
+
+export async function renameList(
+  listId: number,
+  name: string,
+  emoji: string | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_lists')
+    .update({ name: name.trim(), emoji })
+    .eq('id', listId);
+  throwIfError(error);
+}
+
+export async function deleteList(listId: number): Promise<void> {
+  // list_items suit en cascade (FK on delete cascade).
+  const { error } = await supabase
+    .from('user_lists')
+    .delete()
+    .eq('id', listId);
+  throwIfError(error);
+}
+
+export async function fetchAllListItems(): Promise<ListItem[]> {
+  const { data, error } = await supabase
+    .from('list_items')
+    .select('*')
+    .order('added_at', { ascending: false });
+  throwIfError(error);
+  return (data ?? []) as ListItem[];
+}
+
+export async function addToList(item: {
+  list_id: number;
+  media_type: ListMediaType;
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+}): Promise<void> {
+  const { error } = await supabase
+    .from('list_items')
+    .upsert(item, {
+      onConflict: 'list_id,media_type,tmdb_id',
+      ignoreDuplicates: true,
+    });
+  throwIfError(error);
+}
+
+export async function removeFromList(
+  listId: number,
+  mediaType: ListMediaType,
+  tmdbId: number
+): Promise<void> {
+  const { error } = await supabase
+    .from('list_items')
+    .delete()
+    .eq('list_id', listId)
+    .eq('media_type', mediaType)
+    .eq('tmdb_id', tmdbId);
+  throwIfError(error);
+}

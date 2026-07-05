@@ -3,6 +3,7 @@ import { useQueries } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -18,6 +19,8 @@ import { EmptyState, Screen } from '@/components/ui';
 import { useAllWatchedEpisodes, useTrackedShows } from '@/hooks/queries';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { usePersistedState } from '@/hooks/usePersistedState';
+import { usePro } from '@/hooks/usePro';
+import { buildEpisodesIcs, exportIcs } from '@/lib/ics';
 import { syncEpisodeNotifications } from '@/lib/notifications';
 import { episodeKey } from '@/lib/progress';
 import {
@@ -93,6 +96,7 @@ const WEEKDAYS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const { isPro } = usePro();
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState(isoToday());
   const [headerH, setHeaderH] = useState(0);
@@ -227,6 +231,39 @@ export default function CalendarScreen() {
     [boundedItems]
   );
 
+  // Export .ics des diffusions à venir (Pro).
+  const exportCalendar = async () => {
+    if (!isPro) {
+      router.push('/pro');
+      return;
+    }
+    const today = isoToday();
+    const upcoming = boundedItems.filter((i) => i.airDate >= today);
+    if (!upcoming.length) {
+      Alert.alert('Rien à exporter', 'Aucune diffusion à venir.');
+      return;
+    }
+    try {
+      await exportIcs(
+        buildEpisodesIcs(
+          upcoming.map((i) => ({
+            showName: i.showName,
+            season: i.season,
+            episode: i.episode,
+            episodeName: i.episodeName,
+            airDate: i.airDate,
+          }))
+        ),
+        'popcornlog-diffusions.ics'
+      );
+    } catch (error) {
+      Alert.alert(
+        'Export impossible',
+        error instanceof Error ? error.message : 'Une erreur est survenue.'
+      );
+    }
+  };
+
   // Calendrier continu : passé + futur, une seule timeline chronologique.
   const { sections, todayIndex } = useMemo(() => {
     const today = isoToday();
@@ -324,25 +361,57 @@ export default function CalendarScreen() {
       <FrostedHeader onHeight={setHeaderH}>
         <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
           <Text className="text-fg text-2xl font-extrabold">Calendrier</Text>
-          {useWeekGrid ? (
-            <View className="flex-row items-center gap-3">
-              <Pressable onPress={() => setWeekOffset((o) => o - 1)} hitSlop={8}>
-                <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
-              </Pressable>
-              <Pressable onPress={() => setWeekOffset(0)}>
-                <Text className="text-fg text-sm font-semibold min-w-[110px] text-center">
-                  {weekOffset === 0 ? 'Cette semaine' : weekLabel}
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => setWeekOffset((o) => o + 1)} hitSlop={8}>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={colors.textMuted}
-                />
-              </Pressable>
-            </View>
-          ) : null}
+          <View className="flex-row items-center gap-3">
+            {useWeekGrid ? (
+              <>
+                <Pressable
+                  onPress={() => setWeekOffset((o) => o - 1)}
+                  hitSlop={8}
+                >
+                  <Ionicons
+                    name="chevron-back"
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                </Pressable>
+                <Pressable onPress={() => setWeekOffset(0)}>
+                  <Text className="text-fg text-sm font-semibold min-w-[110px] text-center">
+                    {weekOffset === 0 ? 'Cette semaine' : weekLabel}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setWeekOffset((o) => o + 1)}
+                  hitSlop={8}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                </Pressable>
+              </>
+            ) : null}
+            {/* Export .ics des diffusions à venir (Pro). */}
+            <Pressable
+              onPress={exportCalendar}
+              hitSlop={8}
+              className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
+              style={({ pressed }) => (pressed ? { opacity: 0.75 } : undefined)}
+            >
+              <Ionicons
+                name="download-outline"
+                size={17}
+                color={colors.text}
+              />
+              {!isPro ? (
+                <View className="absolute -top-1 -right-1.5 bg-accent rounded-full px-1 py-px">
+                  <Text className="text-accent-fg text-[7px] font-extrabold">
+                    PRO
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
         </View>
         {/* La bande hebdo vit dans le header figé : la pastille du jour focusé
             reste visible pendant le scroll de l'agenda. */}

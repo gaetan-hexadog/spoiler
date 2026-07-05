@@ -15,7 +15,7 @@ import { usePersistedState } from '@/hooks/usePersistedState';
 export function usePro() {
   const [devOverride, setDevOverride] = usePersistedState(
     'pro_dev_override',
-    false
+    true
   );
   return { isPro: devOverride, setDevOverride };
 }

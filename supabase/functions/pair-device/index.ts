@@ -55,7 +55,12 @@ Deno.serve(async (req) => {
     .update({
       claimed: true,
       token_hash: tokenHash,
-      payload: { tmdb_token: tmdb_token ?? null },
+      // Jeton TMDB pour le plugin Kodi : injecté depuis le secret serveur
+      // (le bundle de l'app ne contient plus de jeton TMDB). Le champ client
+      // reste en repli pour d'anciens builds.
+      payload: {
+        tmdb_token: Deno.env.get('TMDB_TOKEN') ?? tmdb_token ?? null,
+      },
     })
     .eq('code', normalized);
   if (updateError) return json({ error: updateError.message }, 500);

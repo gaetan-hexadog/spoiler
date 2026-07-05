@@ -4,13 +4,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Button, Muted, Screen } from '@/components/ui';
-import { markEpisodesBulk, trackShow } from '@/lib/db';
+import { importMovieWatched, markEpisodesBulk, trackShow } from '@/lib/db';
 import { groupByShow, parseTvTimeCsv } from '@/lib/tvtime';
-import { searchShows } from '@/lib/tmdb';
+import { searchMovies, searchShows } from '@/lib/tmdb';
 
 interface ImportReport {
   matched: { name: string; episodes: number }[];
   unmatched: string[];
+  moviesMatched: number;
+  moviesUnmatched: string[];
   skipped: number;
 }
 
@@ -38,14 +40,20 @@ export default function ImportScreen() {
       const content = asset.file
         ? await asset.file.text()
         : await FileSystem.readAsStringAsync(asset.uri);
-      const { rows, skipped } = parseTvTimeCsv(content);
+      const { rows, movies, skipped } = parseTvTimeCsv(content);
       const groups = groupByShow(rows);
-      const result: ImportReport = { matched: [], unmatched: [], skipped };
+      const result: ImportReport = {
+        matched: [],
+        unmatched: [],
+        moviesMatched: 0,
+        moviesUnmatched: [],
+        skipped,
+      };
 
       let index = 0;
       for (const [showName, episodes] of groups) {
         index++;
-        setProgress(`${index} / ${groups.size} — ${showName}`);
+        setProgress(`Séries ${index} / ${groups.size} — ${showName}`);
         try {
           const search = await searchShows(showName);
           const match = search.results[0];
@@ -72,6 +80,30 @@ export default function ImportScreen() {
         }
       }
 
+      // Films (présents dans tracking-prod-records-v2.csv) : résolus sur TMDB
+      // puis marqués « vus ».
+      let movieIndex = 0;
+      for (const movie of movies) {
+        movieIndex++;
+        setProgress(`Films ${movieIndex} / ${movies.length} — ${movie.title}`);
+        try {
+          const search = await searchMovies(movie.title);
+          const match = search.results[0];
+          if (!match) {
+            result.moviesUnmatched.push(movie.title);
+            continue;
+          }
+          await importMovieWatched({
+            tmdb_id: match.id,
+            title: match.title,
+            poster_path: match.poster_path,
+          });
+          result.moviesMatched++;
+        } catch {
+          result.moviesUnmatched.push(movie.title);
+        }
+      }
+
       setReport(result);
       queryClient.invalidateQueries({ queryKey: ['db'] });
     } catch (err) {
@@ -90,9 +122,10 @@ export default function ImportScreen() {
         </Text>
         <Muted>
           Demande l'export de tes données sur TV Time (Paramètres → compte →
-          exporter, ou demande RGPD par email). Sélectionne ensuite le fichier
-          CSV des épisodes vus (« seen_episode.csv »). Chaque série sera
-          retrouvée sur TMDB et ton historique recréé.
+          exporter, ou demande RGPD par email). Sélectionne le fichier
+          « tracking-prod-records-v2.csv » : il contient tout — épisodes vus ET
+          films. (L'ancien « seen_episode.csv », épisodes seulement, marche
+          aussi.) Chaque titre sera retrouvé sur TMDB et ton historique recréé.
         </Muted>
 
         <Button
@@ -115,8 +148,15 @@ export default function ImportScreen() {
               {report.matched.reduce((sum, show) => sum + show.episodes, 0)}{' '}
               épisodes)
             </Text>
+            {report.moviesMatched > 0 ? (
+              <Text className="text-success text-[15px] font-bold">
+                ✓ {report.moviesMatched} film
+                {report.moviesMatched > 1 ? 's' : ''} importé
+                {report.moviesMatched > 1 ? 's' : ''}
+              </Text>
+            ) : null}
             {report.skipped > 0 ? (
-              <Muted>{report.skipped} lignes ignorées (invalides)</Muted>
+              <Muted>{report.skipped} lignes ignorées (non-visionnage)</Muted>
             ) : null}
             {report.unmatched.length ? (
               <>
@@ -124,6 +164,18 @@ export default function ImportScreen() {
                   Séries non trouvées sur TMDB :
                 </Text>
                 {report.unmatched.map((name) => (
+                  <Text key={name} className="text-muted text-[13px]">
+                    · {name}
+                  </Text>
+                ))}
+              </>
+            ) : null}
+            {report.moviesUnmatched.length ? (
+              <>
+                <Text className="text-fg font-bold mt-2">
+                  Films non trouvés sur TMDB :
+                </Text>
+                {report.moviesUnmatched.map((name) => (
                   <Text key={name} className="text-muted text-[13px]">
                     · {name}
                   </Text>

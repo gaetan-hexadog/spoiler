@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Stack, useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -19,6 +19,12 @@ import { Screen } from '@/components/ui';
 import { useProfile } from '@/hooks/queries';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { usePro } from '@/hooks/usePro';
+import {
+  ACCENT_THEMES,
+  getAccentThemeKey,
+  setAccentTheme,
+} from '@/lib/accentThemes';
+import { exportBackup } from '@/lib/backup';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import {
   clearEpisodeNotifications,
@@ -103,6 +109,10 @@ export default function SettingsScreen() {
   const isDesktop = useBreakpoint() === 'desktop';
   const [headerH, setHeaderH] = useState(0);
   const { isPro } = usePro();
+  const [accentKey, setAccentKey] = useState('popcorn');
+  useEffect(() => {
+    getAccentThemeKey().then(setAccentKey);
+  }, []);
   const { show: openSheet, sheet } = useActionSheet();
   const [notifEnabled, setNotifEnabled] = usePersistedState(
     'notifications',
@@ -152,6 +162,27 @@ export default function SettingsScreen() {
         },
       ],
     });
+
+  // Sauvegarde JSON (Pro) : partage vers Drive/Files, téléchargement sur web.
+  const [backingUp, setBackingUp] = useState(false);
+  const backupData = async () => {
+    if (!isPro) {
+      router.push('/pro');
+      return;
+    }
+    if (backingUp) return;
+    setBackingUp(true);
+    try {
+      await exportBackup();
+    } catch (error) {
+      Alert.alert(
+        'Sauvegarde impossible',
+        error instanceof Error ? error.message : 'Une erreur est survenue.'
+      );
+    } finally {
+      setBackingUp(false);
+    }
+  };
 
   const [deleting, setDeleting] = useState(false);
   const confirmDeleteAccount = () =>
@@ -241,6 +272,66 @@ export default function SettingsScreen() {
           onPress={() => router.push('/history')}
         />
       </View>
+
+      <GroupLabel>APPARENCE</GroupLabel>
+      <View className="bg-surface rounded-2xl p-3.5">
+        <View className="flex-row items-center gap-2 mb-3">
+          <Text className="text-fg text-[14px] font-semibold flex-1">
+            Couleur d'accent
+          </Text>
+          {!isPro ? (
+            <View className="bg-accent rounded-full px-2 py-0.5">
+              <Text className="text-accent-fg text-[9px] font-extrabold">
+                PRO
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <View className="flex-row flex-wrap gap-2.5">
+          {ACCENT_THEMES.map((theme) => {
+            const active = theme.key === accentKey;
+            return (
+              <Pressable
+                key={theme.key}
+                onPress={() => {
+                  if (!isPro) {
+                    router.push('/pro');
+                    return;
+                  }
+                  setAccentKey(theme.key);
+                  setAccentTheme(theme.key).catch(() => {});
+                }}
+                className="items-center gap-1"
+                style={({ pressed }) => (pressed ? { opacity: 0.75 } : undefined)}
+              >
+                <View
+                  className="w-9 h-9 rounded-full items-center justify-center"
+                  style={{
+                    backgroundColor: theme.accent,
+                    borderWidth: active ? 3 : 0,
+                    borderColor: colors.text,
+                  }}
+                >
+                  {active ? (
+                    <Ionicons
+                      name="checkmark"
+                      size={16}
+                      color={theme.accentFg}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  className={`text-[9.5px] ${
+                    active ? 'text-fg font-bold' : 'text-muted'
+                  }`}
+                >
+                  {theme.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
       <Pressable
         onPress={confirmSignOut}
         className="mt-[18px] rounded-2xl px-3.5 py-3.5 flex-row items-center gap-3"
@@ -266,6 +357,15 @@ export default function SettingsScreen() {
           label="Associer un appareil Kodi"
           sublabel="Scrobbling automatique"
           onPress={() => router.push('/pair')}
+          right={
+            !isPro ? (
+              <View className="bg-accent rounded-full px-2 py-0.5">
+                <Text className="text-accent-fg text-[9px] font-extrabold">
+                  PRO
+                </Text>
+              </View>
+            ) : undefined
+          }
           divider
         />
         <Row
@@ -279,6 +379,24 @@ export default function SettingsScreen() {
           icon="download"
           label="Importer depuis Netflix"
           onPress={() => router.push('/import-netflix')}
+          divider
+        />
+        <Row
+          icon="cloud-upload"
+          label="Sauvegarder mes données"
+          sublabel={
+            backingUp ? 'Préparation…' : 'Export JSON — vers Drive, Files…'
+          }
+          onPress={backupData}
+          right={
+            !isPro ? (
+              <View className="bg-accent rounded-full px-2 py-0.5">
+                <Text className="text-accent-fg text-[9px] font-extrabold">
+                  PRO
+                </Text>
+              </View>
+            ) : undefined
+          }
         />
       </View>
     </View>

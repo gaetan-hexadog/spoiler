@@ -434,3 +434,121 @@ export function useRemoveMovie() {
     (old, tmdbId) => old.filter((row) => row.tmdb_id !== tmdbId)
   );
 }
+
+// --- Listes personnalisées (Pro) ------------------------------------------------
+
+const LISTS_KEY = ['db', 'user_lists'];
+const LIST_ITEMS_KEY = ['db', 'list_items'];
+
+export function useLists() {
+  return useQuery({ queryKey: LISTS_KEY, queryFn: db.fetchLists });
+}
+
+/** Tous les éléments de toutes les listes (petits volumes → un seul fetch). */
+export function useAllListItems() {
+  return useQuery({ queryKey: LIST_ITEMS_KEY, queryFn: db.fetchAllListItems });
+}
+
+export function useCreateList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, emoji }: { name: string; emoji: string | null }) =>
+      db.createList(name, emoji),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: LISTS_KEY }),
+    onError: (error) =>
+      Alert.alert(
+        'Création impossible',
+        error instanceof Error ? error.message : 'Une erreur est survenue.'
+      ),
+  });
+}
+
+export function useRenameList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      listId,
+      name,
+      emoji,
+    }: {
+      listId: number;
+      name: string;
+      emoji: string | null;
+    }) => db.renameList(listId, name, emoji),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: LISTS_KEY }),
+    onError: (error) =>
+      Alert.alert(
+        'Renommage impossible',
+        error instanceof Error ? error.message : 'Une erreur est survenue.'
+      ),
+  });
+}
+
+export function useDeleteList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (listId: number) => db.deleteList(listId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LISTS_KEY });
+      queryClient.invalidateQueries({ queryKey: LIST_ITEMS_KEY });
+    },
+    onError: (error) =>
+      Alert.alert(
+        'Suppression impossible',
+        error instanceof Error ? error.message : 'Une erreur est survenue.'
+      ),
+  });
+}
+
+export function useAddToList() {
+  return useOptimisticMutation<
+    {
+      list_id: number;
+      media_type: db.ListMediaType;
+      tmdb_id: number;
+      title: string;
+      poster_path: string | null;
+    },
+    db.ListItem
+  >(
+    (item) => db.addToList(item),
+    LIST_ITEMS_KEY,
+    (old, item) =>
+      old.some(
+        (row) =>
+          row.list_id === item.list_id &&
+          row.media_type === item.media_type &&
+          row.tmdb_id === item.tmdb_id
+      )
+        ? old
+        : [
+            {
+              id: -Date.now(),
+              user_id: '',
+              added_at: new Date().toISOString(),
+              ...item,
+            },
+            ...old,
+          ]
+  );
+}
+
+export function useRemoveFromList() {
+  return useOptimisticMutation<
+    { listId: number; mediaType: db.ListMediaType; tmdbId: number },
+    db.ListItem
+  >(
+    ({ listId, mediaType, tmdbId }) =>
+      db.removeFromList(listId, mediaType, tmdbId),
+    LIST_ITEMS_KEY,
+    (old, { listId, mediaType, tmdbId }) =>
+      old.filter(
+        (row) =>
+          !(
+            row.list_id === listId &&
+            row.media_type === mediaType &&
+            row.tmdb_id === tmdbId
+          )
+      )
+  );
+}

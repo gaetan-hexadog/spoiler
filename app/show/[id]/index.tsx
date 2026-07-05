@@ -6,6 +6,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useHeaderScroll } from '@/hooks/useHeaderScroll';
 import { useActionSheet } from '@/components/ActionSheet';
+import { AddToListButton } from '@/components/AddToListSheet';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
 import { EpisodeCard } from '@/components/EpisodeCard';
@@ -242,6 +243,12 @@ export default function ShowDetailScreen() {
 
   const headerRight = (
     <>
+      <AddToListButton
+        mediaType="show"
+        tmdbId={show.id}
+        title={show.name}
+        posterPath={show.poster_path}
+      />
       <FloatingButton
         icon={planned ? 'bookmark' : 'bookmark-outline'}
         active={planned}

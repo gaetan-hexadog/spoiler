@@ -1,5 +1,8 @@
-// Parseur de l'export TV Time (fichier « seen_episode.csv » de l'export RGPD,
-// ou tout CSV avec des colonnes série / saison / épisode).
+// Parseur des exports TV Time (RGPD). Deux formats connus :
+//  - « tracking-prod-records-v2.csv » (récent, COMPLET : épisodes ET films,
+//    colonnes entity_type / series_name / movie_name…)
+//  - « seen_episode.csv » (ancien, épisodes seulement)
+// La détection est automatique via les colonnes présentes.
 
 export interface ImportRow {
   showName: string;
@@ -7,8 +10,13 @@ export interface ImportRow {
   episode: number;
 }
 
+export interface ImportMovie {
+  title: string;
+}
+
 export interface ParseResult {
   rows: ImportRow[];
+  movies: ImportMovie[];
   skipped: number;
 }
 
@@ -55,6 +63,9 @@ export function parseCsv(text: string): string[][] {
 const SHOW_COLUMNS = ['tv_show_name', 'show_name', 'series_name', 'show', 'name', 'title'];
 const SEASON_COLUMNS = ['episode_season_number', 'season_number', 'season', 's'];
 const EPISODE_COLUMNS = ['episode_number', 'episode', 'number', 'e'];
+const MOVIE_COLUMNS = ['movie_name', 'movie_title'];
+const ENTITY_COLUMNS = ['entity_type'];
+const TYPE_COLUMNS = ['type'];
 
 function findColumn(header: string[], candidates: string[]): number {
   const normalized = header.map((column) => column.trim().toLowerCase());
@@ -66,7 +77,7 @@ function findColumn(header: string[], candidates: string[]): number {
 }
 
 /**
- * Extrait les épisodes vus d'un CSV TV Time.
+ * Extrait épisodes vus ET films d'un export TV Time (les deux formats).
  * Lance une erreur si les colonnes attendues sont introuvables.
  */
 export function parseTvTimeCsv(text: string): ParseResult {
@@ -78,18 +89,60 @@ export function parseTvTimeCsv(text: string): ParseResult {
   const showIndex = findColumn(header, SHOW_COLUMNS);
   const seasonIndex = findColumn(header, SEASON_COLUMNS);
   const episodeIndex = findColumn(header, EPISODE_COLUMNS);
-  if (showIndex === -1 || seasonIndex === -1 || episodeIndex === -1) {
+  const movieIndex = findColumn(header, MOVIE_COLUMNS);
+  const entityIndex = findColumn(header, ENTITY_COLUMNS);
+  const typeIndex = findColumn(header, TYPE_COLUMNS);
+  const hasEpisodeColumns =
+    showIndex !== -1 && seasonIndex !== -1 && episodeIndex !== -1;
+  if (!hasEpisodeColumns && movieIndex === -1) {
     throw new Error(
       `Colonnes introuvables. Attendues : nom de série (${SHOW_COLUMNS[0]}), ` +
-        `saison (${SEASON_COLUMNS[0]}), épisode (${EPISODE_COLUMNS[0]}). ` +
-        `Trouvées : ${header.join(', ')}`
+        `saison (${SEASON_COLUMNS[0]}), épisode (${EPISODE_COLUMNS[0]}) — ` +
+        `et/ou film (${MOVIE_COLUMNS[0]}). Trouvées : ${header.join(', ')}`
     );
   }
 
   const result: ImportRow[] = [];
+  const movies: ImportMovie[] = [];
   let skipped = 0;
   const seen = new Set<string>();
+  const seenMovies = new Set<string>();
+
   for (const row of rows.slice(1)) {
+    // tracking-prod-records-v2 : ne garder que les événements de visionnage
+    // (type « watch »/« rewatch ») quand la colonne existe — les follows,
+    // notes, etc. ne sont pas des vus.
+    if (typeIndex !== -1) {
+      const type = (row[typeIndex] ?? '').trim().toLowerCase();
+      if (type && !type.includes('watch')) {
+        skipped++;
+        continue;
+      }
+    }
+    const entity =
+      entityIndex !== -1 ? (row[entityIndex] ?? '').trim().toLowerCase() : '';
+
+    // Films (v2 uniquement) : entity_type « movie » ou colonne movie_name remplie.
+    const movieTitle =
+      movieIndex !== -1 ? (row[movieIndex] ?? '').trim() : '';
+    if (movieTitle && (entity === '' || entity.includes('movie'))) {
+      const key = movieTitle.toLowerCase();
+      if (!seenMovies.has(key)) {
+        seenMovies.add(key);
+        movies.push({ title: movieTitle });
+      }
+      continue;
+    }
+    if (entity.includes('movie')) {
+      skipped++;
+      continue;
+    }
+
+    // Épisodes.
+    if (!hasEpisodeColumns) {
+      skipped++;
+      continue;
+    }
     const showName = (row[showIndex] ?? '').trim();
     const season = Number.parseInt(row[seasonIndex] ?? '', 10);
     const episode = Number.parseInt(row[episodeIndex] ?? '', 10);
@@ -102,7 +155,7 @@ export function parseTvTimeCsv(text: string): ParseResult {
     seen.add(key);
     result.push({ showName, season, episode });
   }
-  return { rows: result, skipped };
+  return { rows: result, movies, skipped };
 }
 
 /** Regroupe les lignes d'import par nom de série. */

@@ -111,9 +111,9 @@ export function FloatingHeader({
               position: 'absolute',
               top: insets.top + 16,
               // Réserve la place des boutons : back (~52) à gauche, et jusqu'à
-              // deux boutons ronds (~104) à droite. Le titre tronque avant eux.
+              // trois boutons ronds (~152) à droite. Le titre tronque avant eux.
               left: 60,
-              right: 112,
+              right: 156,
               textAlign: 'left',
               color: colors.text,
               fontSize: 16,

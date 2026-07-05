@@ -128,6 +128,56 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Raccourcis Pro : listes personnalisées + stats avancées */}
+        <View className={isDesktop ? 'flex-row gap-4' : 'gap-3'}>
+          <Pressable
+            onPress={() => router.push('/lists')}
+            className="bg-surface rounded-2xl p-3.5 flex-row items-center gap-3 flex-1"
+            style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
+          >
+            <View
+              className="w-9 h-9 rounded-xl items-center justify-center"
+              style={{ backgroundColor: 'rgba(255,212,73,0.12)' }}
+            >
+              <Ionicons name="albums" size={19} color={colors.accent} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-fg text-[14.5px] font-bold">Mes listes</Text>
+              <Text className="text-muted text-[12px] mt-0.5">
+                Collections personnalisées
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.textMuted}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/stats')}
+            className="bg-surface rounded-2xl p-3.5 flex-row items-center gap-3 flex-1"
+            style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
+          >
+            <View
+              className="w-9 h-9 rounded-xl items-center justify-center"
+              style={{ backgroundColor: 'rgba(255,212,73,0.12)' }}
+            >
+              <Ionicons name="stats-chart" size={19} color={colors.accent} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-fg text-[14.5px] font-bold">Mon bilan</Text>
+              <Text className="text-muted text-[12px] mt-0.5">
+                Stats avancées par année
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.textMuted}
+            />
+          </Pressable>
+        </View>
+
         <View className={isDesktop ? 'flex-row gap-6 items-start' : 'gap-5'}>
           {/* Colonne gauche : chiffre héros + heatmap + stats secondaires */}
           <View className={`gap-5 ${isDesktop ? 'flex-1' : ''}`}>

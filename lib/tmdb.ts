@@ -1,9 +1,10 @@
-const BASE_URL = 'https://api.themoviedb.org/3';
-const TOKEN = process.env.EXPO_PUBLIC_TMDB_TOKEN ?? '';
-const LANG = 'fr-FR';
+import { supabase } from './supabase';
 
-// Le jeton v4 est un JWT (contient des points), la clé v3 est une chaîne courte.
-const isV4Token = TOKEN.includes('.');
+// Les requêtes TMDB passent par l'Edge Function « tmdb-proxy » : le jeton
+// TMDB vit côté serveur (secret Supabase), plus jamais dans le bundle client.
+const PROXY_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''}/functions/v1/tmdb-proxy`;
+const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const LANG = 'fr-FR';
 
 export interface TmdbShowSummary {
   id: number;
@@ -135,18 +136,24 @@ async function tmdb<T>(
   path: string,
   params: Record<string, string | number> = {}
 ): Promise<T> {
-  const url = new URL(`${BASE_URL}${path}`);
+  const url = new URL(PROXY_URL);
+  url.searchParams.set('path', path);
   url.searchParams.set('language', LANG);
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, String(value));
   }
-  const headers: Record<string, string> = { accept: 'application/json' };
-  if (isV4Token) {
-    headers.Authorization = `Bearer ${TOKEN}`;
-  } else {
-    url.searchParams.set('api_key', TOKEN);
-  }
-  const res = await fetch(url.toString(), { headers });
+  // Le proxy exige un utilisateur connecté (tous les écrans TMDB sont
+  // derrière l'auth, la session est donc toujours là).
+  const { data } = await supabase.auth.getSession();
+  const jwt = data.session?.access_token;
+  if (!jwt) throw new Error('Connexion requise pour charger le catalogue.');
+  const res = await fetch(url.toString(), {
+    headers: {
+      accept: 'application/json',
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${jwt}`,
+    },
+  });
   if (!res.ok) {
     throw new Error(`TMDB ${res.status} sur ${path}`);
   }
