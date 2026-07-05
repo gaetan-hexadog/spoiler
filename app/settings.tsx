@@ -18,6 +18,7 @@ import { FrostedHeader } from '@/components/FrostedHeader';
 import { Screen } from '@/components/ui';
 import { useProfile } from '@/hooks/queries';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { usePro } from '@/hooks/usePro';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import {
   clearEpisodeNotifications,
@@ -101,6 +102,7 @@ export default function SettingsScreen() {
   const profile = useProfile();
   const isDesktop = useBreakpoint() === 'desktop';
   const [headerH, setHeaderH] = useState(0);
+  const { isPro } = usePro();
   const { show: openSheet, sheet } = useActionSheet();
   const [notifEnabled, setNotifEnabled] = usePersistedState(
     'notifications',
@@ -328,6 +330,36 @@ export default function SettingsScreen() {
         }}
       >
         {accountCard}
+
+        <Pressable
+          onPress={() => router.push('/pro')}
+          className="mt-3 rounded-[18px] p-[16px] flex-row items-center gap-3.5"
+          style={({ pressed }) => [
+            { backgroundColor: 'rgba(255,212,73,0.10)', borderWidth: 1, borderColor: 'rgba(255,212,73,0.35)' },
+            pressed ? { opacity: 0.85 } : undefined,
+          ]}
+        >
+          <View className="w-11 h-11 rounded-2xl bg-accent items-center justify-center">
+            <Ionicons name="star" size={22} color={colors.accentText} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-fg text-[15px] font-extrabold">
+              {isPro ? 'PopcornLog Pro' : 'Passer à Pro'}
+            </Text>
+            <Text className="text-muted text-[12px] mt-0.5">
+              {isPro
+                ? 'Abonnement actif — merci ✨'
+                : 'Suivi illimité, stats avancées, bandes-annonces…'}
+            </Text>
+          </View>
+          {isPro ? (
+            <View className="bg-accent rounded-full px-2.5 py-1">
+              <Text className="text-accent-fg text-[11px] font-extrabold">PRO</Text>
+            </View>
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={colors.accent} />
+          )}
+        </Pressable>
 
         {isDesktop ? (
           <View className="flex-row gap-5 mt-1 items-start">

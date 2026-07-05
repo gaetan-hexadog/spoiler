@@ -1,6 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Screen } from '@/components/ui';
+import { colors } from '@/lib/theme';
 
 /**
  * Politique de confidentialité — page statique, accessible connecté (Paramètres)
@@ -26,8 +29,18 @@ function P({ children }: { children: React.ReactNode }) {
 }
 
 export default function PrivacyScreen() {
+  const router = useRouter();
+  // Sortie garantie même sans historique (accès direct par URL, ou depuis
+  // signup après un refresh) : back si possible, sinon retour à l'accueil
+  // (qui redirige vers /login si déconnecté).
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+
   return (
     <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         contentContainerStyle={{
           padding: 20,
@@ -37,6 +50,15 @@ export default function PrivacyScreen() {
           alignSelf: 'center',
         }}
       >
+        <Pressable
+          onPress={goBack}
+          hitSlop={8}
+          className="flex-row items-center gap-2 py-2 -ml-1 mb-2 self-start"
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <Text className="text-fg text-[15px] font-bold">Retour</Text>
+        </Pressable>
         <Text className="text-fg text-2xl font-extrabold">
           Politique de confidentialité
         </Text>

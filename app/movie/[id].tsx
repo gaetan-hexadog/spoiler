@@ -1,16 +1,8 @@
 import { BlurTargetView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useRef } from 'react';
-import {
-  Image,
-  Linking,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { Image, ScrollView, Text, View } from 'react-native';
 import { useHeaderScroll } from '@/hooks/useHeaderScroll';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
@@ -18,6 +10,7 @@ import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
 import { PosterCard } from '@/components/PosterCard';
 import { RatingField } from '@/components/RatingField';
 import { DetailSkeleton } from '@/components/Skeleton';
+import { TrailerPlayButton } from '@/components/TrailerPlayButton';
 import { WhereToWatch } from '@/components/WhereToWatch';
 import { Screen } from '@/components/ui';
 import {
@@ -204,21 +197,7 @@ export default function MovieDetailScreen() {
               colors={['transparent', colors.bg]}
               style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
             />
-            {(() => {
-              const trailer = findTrailer(movie.videos);
-              return trailer ? (
-                <Pressable
-                  onPress={() =>
-                    Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)
-                  }
-                  className="absolute inset-0 items-center justify-center"
-                >
-                  <View className="w-16 h-16 rounded-full bg-bg/70 border border-fg/30 items-center justify-center pl-1">
-                    <Ionicons name="play" size={30} color={colors.text} />
-                  </View>
-                </Pressable>
-              ) : null;
-            })()}
+            <TrailerPlayButton trailer={findTrailer(movie.videos)} size="lg" />
           </View>
 
           <View className="flex-row gap-8 px-8 -mt-24">
@@ -280,23 +259,7 @@ export default function MovieDetailScreen() {
               height: 90,
             }}
           />
-          {(() => {
-            const trailer = findTrailer(movie.videos);
-            return trailer ? (
-              <Pressable
-                onPress={() =>
-                  Linking.openURL(
-                    `https://www.youtube.com/watch?v=${trailer.key}`
-                  )
-                }
-                className="absolute inset-0 items-center justify-center"
-              >
-                <View className="w-14 h-14 rounded-full bg-bg/70 border border-fg/30 items-center justify-center pl-1">
-                  <Ionicons name="play" size={26} color={colors.text} />
-                </View>
-              </Pressable>
-            ) : null;
-          })()}
+          <TrailerPlayButton trailer={findTrailer(movie.videos)} />
         </View>
 
         <View className="flex-row px-4 -mt-12 gap-3 items-end">
