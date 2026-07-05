@@ -11,20 +11,22 @@ import {
   View,
 } from 'react-native';
 import { useHeaderScroll } from '@/hooks/useHeaderScroll';
-import { useActionSheet } from '@/components/ActionSheet';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
 import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
-import { MovieActionBar } from '@/components/MovieActionBar';
 import { PosterCard } from '@/components/PosterCard';
+import { RatingField } from '@/components/RatingField';
 import { DetailSkeleton } from '@/components/Skeleton';
 import { WhereToWatch } from '@/components/WhereToWatch';
 import { Screen } from '@/components/ui';
 import {
+  useAddMovie,
   useMovieDetails,
   useMovieRecommendations,
   useMovies,
   useRemoveMovie,
+  useSetMovieRating,
+  useSetMovieStatus,
 } from '@/hooks/queries';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { findTrailer, imageUrl } from '@/lib/tmdb';
@@ -36,10 +38,12 @@ export default function MovieDetailScreen() {
 
   const router = useRouter();
   const { scrolled, scrollProps } = useHeaderScroll();
-  const { show: openSheet, sheet } = useActionSheet();
   const isDesktop = useBreakpoint() === 'desktop';
   const details = useMovieDetails(movieId);
   const movies = useMovies();
+  const addMovie = useAddMovie();
+  const setStatus = useSetMovieStatus();
+  const setRating = useSetMovieRating();
   const removeMovie = useRemoveMovie();
   const recommendations = useMovieRecommendations(movieId);
 
@@ -78,28 +82,47 @@ export default function MovieDetailScreen() {
     .filter((item) => !myMovieIds.has(item.id))
     .slice(0, 12);
 
-  // --- Blocs réutilisés par les layouts mobile et desktop ---
-  // Barre d'actions unifiée (Vu · Watchlist · Noter).
-  const actionsEl = <MovieActionBar movie={movie} />;
+  // --- Modèle d'action : les deux états (À voir · Vu) vivent dans le header,
+  // sous forme de boutons ronds qui basculent leur propre statut. Actif = plein
+  // accent ; ré-appui sur l'actif = on retire. Jumelle exacte de la fiche série.
+  const watched = saved?.status === 'watched';
+  const inWatchlist = saved?.status === 'watchlist';
 
-  // Le header ne double plus la watchlist (gérée par MovieActionBar) : juste
-  // une action « … » pour retirer le film, visible s'il est dans la liste.
-  const headerRight = saved ? (
-    <FloatingButton
-      icon="ellipsis-horizontal"
-      onPress={() =>
-        openSheet({
-          title: 'Retirer de mes films',
-          message: movie.title,
-          actions: [
-            {
-              label: 'Retirer',
-              variant: 'danger',
-              onPress: () => removeMovie.mutate(movieId),
-            },
-          ],
-        })
-      }
+  const setStatusOrAdd = (status: 'watched' | 'watchlist') => {
+    if (saved) setStatus.mutate({ tmdbId: movie.id, status });
+    else
+      addMovie.mutate({
+        tmdb_id: movie.id,
+        title: movie.title,
+        poster_path: movie.poster_path,
+        status,
+      });
+  };
+  const toggleWatched = () =>
+    watched ? removeMovie.mutate(movie.id) : setStatusOrAdd('watched');
+  const toggleWatchlist = () =>
+    inWatchlist ? removeMovie.mutate(movie.id) : setStatusOrAdd('watchlist');
+
+  const headerRight = (
+    <>
+      <FloatingButton
+        icon={inWatchlist ? 'bookmark' : 'bookmark-outline'}
+        active={inWatchlist}
+        onPress={toggleWatchlist}
+      />
+      <FloatingButton
+        icon={watched ? 'checkmark-circle' : 'checkmark-circle-outline'}
+        active={watched}
+        onPress={toggleWatched}
+      />
+    </>
+  );
+
+  // La note apparaît d'elle-même une fois le film vu (bloc « Ma note » partagé).
+  const ratingEl = watched ? (
+    <RatingField
+      value={saved?.rating ?? null}
+      onChange={(rating) => setRating.mutate({ tmdbId: movie.id, rating })}
     />
   ) : null;
 
@@ -169,7 +192,6 @@ export default function MovieDetailScreen() {
     return (
       <View className="flex-1 bg-bg">
         <Stack.Screen options={{ headerShown: false }} />
-        {sheet}
         <FloatingHeader right={headerRight} />
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View className="bg-surface" style={{ height: 360 }}>
@@ -205,7 +227,7 @@ export default function MovieDetailScreen() {
                   className="w-52 aspect-[2/3] rounded-2xl border-2 border-line"
                 />
               ) : null}
-              {actionsEl}
+              {ratingEl}
               {whereEl}
             </View>
             <View className="flex-1 gap-5 pt-28">
@@ -231,7 +253,6 @@ export default function MovieDetailScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
-      {sheet}
       <FloatingHeader
         scrolled={scrolled}
         title={movie.title}
@@ -292,8 +313,9 @@ export default function MovieDetailScreen() {
         <View className="p-4 gap-4">
           <View className={isDesktop ? 'flex-row gap-10 items-start' : 'gap-4'}>
             <View className={`gap-4 ${isDesktop ? 'flex-[3]' : ''}`}>
-              {/* Action-first : la barre d'actions passe avant le synopsis. */}
-              {actionsEl}
+              {/* Les actions (À voir · Vu) sont dans le header ; ici la note
+                  contextuelle puis le synopsis. */}
+              {ratingEl}
               {movie.overview ? (
                 <Text className="text-fg text-sm leading-[21px] opacity-90">
                   {movie.overview}

@@ -73,16 +73,24 @@ export function FloatingHeader({
               // natif et on ne voit ni fond ni flou. On reste sous les boutons
               // (z-10) et le titre (z-11).
               zIndex: 9,
-              // Fond sombre semi-opaque : lisible partout, même si le flou
-              // web est subtil. Le BlurView ajoute le frost par-dessus.
-              backgroundColor: 'rgba(13,19,33,0.66)',
+              // Teinte sombre : donne la couleur du header. On la garde assez
+              // dense (le flou lourd par-dessus fait le reste : le contenu
+              // derrière est brouillé, donc ça ne « voit pas au travers »).
+              backgroundColor: 'rgba(13,19,33,0.78)',
               borderBottomWidth: 1,
               borderBottomColor: colors.border,
             },
             fade,
           ]}
         >
-          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+          {/* experimentalBlurMethod est INDISPENSABLE pour un vrai flou sur
+              Android (sinon expo-blur ne pose qu'une teinte plate). */}
+          <BlurView
+            intensity={64}
+            tint="dark"
+            experimentalBlurMethod="dimezisBlurView"
+            style={StyleSheet.absoluteFill}
+          />
         </Reanimated.View>
       ) : null}
       {title && hasScroll ? (

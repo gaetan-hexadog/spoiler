@@ -18,7 +18,7 @@ import { EpisodeCard } from '@/components/EpisodeCard';
 import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
 import { NextEpisodeBanner } from '@/components/NextEpisodeBanner';
 import { PosterCard } from '@/components/PosterCard';
-import { ShowActionBar } from '@/components/ShowActionBar';
+import { RatingField } from '@/components/RatingField';
 import { DetailSkeleton } from '@/components/Skeleton';
 import { WhereToWatch } from '@/components/WhereToWatch';
 import { ProgressBar, Screen } from '@/components/ui';
@@ -27,9 +27,11 @@ import {
   useMarkEpisode,
   useMarkEpisodesBulk,
   useSeasonDetails,
+  useSetShowRating,
   useSetShowStatus,
   useShowDetails,
   useShowRecommendations,
+  useTrackShow,
   useTrackedShows,
   useUntrackShow,
 } from '@/hooks/queries';
@@ -73,7 +75,9 @@ export default function ShowDetailScreen() {
   const tracked = useTrackedShows();
   const watchedRows = useAllWatchedEpisodes();
   const untrackShow = useUntrackShow();
+  const trackShow = useTrackShow();
   const setStatus = useSetShowStatus();
+  const setRating = useSetShowRating();
   const markEpisode = useMarkEpisode();
   const markBulk = useMarkEpisodesBulk();
   const recommendations = useShowRecommendations(showId);
@@ -220,29 +224,51 @@ export default function ShowDetailScreen() {
       ],
     });
 
-  const openOptions = () =>
-    openSheet({
-      title: show.name,
-      actions: [
-        {
-          label:
-            trackedShow?.status === 'stopped'
-              ? 'Reprendre la série'
-              : 'Ne plus regarder (mettre de côté)',
-          onPress: () =>
-            setStatus.mutate({
-              tmdbId: showId,
-              status:
-                trackedShow?.status === 'stopped' ? 'watching' : 'stopped',
-            }),
-        },
-        {
-          label: 'Ne plus suivre (tout supprimer)',
-          variant: 'danger',
-          onPress: unfollow,
-        },
-      ],
-    });
+  // --- Modèle d'action (jumeau de la fiche film) : deux boutons ronds dans le
+  // header, À voir · Suivie. Actif = plein accent ; ré-appui sur l'actif retire.
+  // « Suivie » = série démarrée (watching/completed/stopped) ; « À voir » = planned.
+  const following = !!trackedShow && trackedShow.status !== 'planned';
+  const planned = trackedShow?.status === 'planned';
+
+  const setStatusOrTrack = (status: 'watching' | 'planned') => {
+    if (trackedShow) setStatus.mutate({ tmdbId: showId, status });
+    else
+      trackShow.mutate({
+        tmdb_id: show.id,
+        name: show.name,
+        poster_path: show.poster_path,
+        backdrop_path: show.backdrop_path,
+        status,
+      });
+  };
+  // Retirer une série suivie supprime tout l'historique d'épisodes : on confirme.
+  const toggleFollowing = () =>
+    following ? unfollow() : setStatusOrTrack('watching');
+  const togglePlanned = () =>
+    planned ? untrackShow.mutate(showId) : setStatusOrTrack('planned');
+
+  const headerRight = (
+    <>
+      <FloatingButton
+        icon={planned ? 'bookmark' : 'bookmark-outline'}
+        active={planned}
+        onPress={togglePlanned}
+      />
+      <FloatingButton
+        icon={following ? 'checkmark-circle' : 'checkmark-circle-outline'}
+        active={following}
+        onPress={toggleFollowing}
+      />
+    </>
+  );
+
+  // La note apparaît d'elle-même une fois la série suivie (bloc partagé).
+  const ratingEl = following ? (
+    <RatingField
+      value={trackedShow?.rating ?? null}
+      onChange={(rating) => setRating.mutate({ tmdbId: showId, rating })}
+    />
+  ) : null;
 
   const toggleEpisode = (episode: TmdbEpisode, isWatched: boolean) => {
     const markSingle = (value: boolean) =>
@@ -315,9 +341,6 @@ export default function ShowDetailScreen() {
       {show.overview}
     </Text>
   ) : null;
-
-  // Barre d'actions unifiée (jumelle de MovieActionBar) : Suivie · À voir + note.
-  const actionBar = <ShowActionBar show={show} />;
 
   const whereEl = (
     <WhereToWatch providers={show['watch/providers']?.results?.FR} />
@@ -489,16 +512,7 @@ export default function ShowDetailScreen() {
       <View className="flex-1 bg-bg">
         <Stack.Screen options={{ headerShown: false }} />
         {sheet}
-        <FloatingHeader
-          right={
-            trackedShow ? (
-              <FloatingButton
-                icon="ellipsis-horizontal"
-                onPress={openOptions}
-              />
-            ) : null
-          }
-        />
+        <FloatingHeader right={headerRight} />
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
           <View className="bg-surface" style={{ height: 360 }}>
             {backdrop ? (
@@ -546,7 +560,7 @@ export default function ShowDetailScreen() {
                   </View>
                 </View>
               ) : null}
-              {actionBar}
+              {ratingEl}
               {whereEl}
             </View>
 
@@ -581,15 +595,7 @@ export default function ShowDetailScreen() {
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
       {sheet}
-      <FloatingHeader
-        scrolled={scrolled}
-        title={show.name}
-        right={
-          trackedShow ? (
-            <FloatingButton icon="ellipsis-horizontal" onPress={openOptions} />
-          ) : null
-        }
-      />
+      <FloatingHeader scrolled={scrolled} title={show.name} right={headerRight} />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }} {...scrollProps}>
         <View
           className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
@@ -652,7 +658,7 @@ export default function ShowDetailScreen() {
         {nextBanner ? <View className="pt-3">{nextBanner}</View> : null}
 
         <View className="p-4 gap-4">
-          {actionBar}
+          {ratingEl}
 
           <View
             className={`${isDesktop ? 'self-start' : ''} flex-row bg-surface rounded-lg p-[3px]`}
