@@ -13,7 +13,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
-        "backgroundColor": "#0D1321"
+        "backgroundColor": "#26203C"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.hexadog.popcornlog"

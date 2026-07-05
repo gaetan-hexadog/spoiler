@@ -4,7 +4,7 @@
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 
-const NAVY = '#0D1321'; // fond des icônes / splash (navy de la marque)
+const ICON_BG = '#26203C'; // fond des icônes (prune ; cf. app.json adaptiveIcon.backgroundColor)
 
 // --- Logo en coordonnées natives (repère du SVG source) --------------------
 // Boîte englobante réelle du dessin : x ∈ [62,178], y ∈ [61,206].
@@ -75,7 +75,7 @@ mkdirSync('assets', { recursive: true });
 
 const jobs = [
   // iOS + fallback : plein cadre opaque, le logo respire (~62 %).
-  ['assets/icon.png', tile(LOGO_COLOR, 0.62, NAVY), 1024],
+  ['assets/icon.png', tile(LOGO_COLOR, 0.62, ICON_BG), 1024],
   // Android adaptive foreground : transparent, ~46 % (dans la safe zone).
   ['assets/android-icon-foreground.png', tile(LOGO_COLOR, 0.46, null), 1024],
   // Android monochrome (icône thématique) : silhouette + coche évidée.
@@ -83,7 +83,7 @@ const jobs = [
   // Splash : logo transparent (le fond #0D1321 vient d'expo-splash-screen).
   ['assets/splash-icon.png', tile(LOGO_COLOR, 0.8, null), 1024],
   // Favicon web : petit → fond + logo un peu plus grand (~68 %).
-  ['assets/favicon.png', tile(LOGO_COLOR, 0.68, NAVY), 64],
+  ['assets/favicon.png', tile(LOGO_COLOR, 0.68, ICON_BG), 64],
   // Logo UI in-app (sidebar / écrans d'auth) : transparent, resserré.
   ['assets/logo.png', tile(LOGO_COLOR, 0.92, null), 512],
 ];
@@ -95,7 +95,7 @@ for (const [file, source, size] of jobs) {
 
 // Fond uni pour l'adaptive icon Android (au cas où le backgroundImage est utilisé).
 await sharp({
-  create: { width: 1024, height: 1024, channels: 4, background: NAVY },
+  create: { width: 1024, height: 1024, channels: 4, background: ICON_BG },
 })
   .png()
   .toFile('assets/android-icon-background.png');
