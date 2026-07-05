@@ -4,6 +4,8 @@ import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { View } from 'react-native';
+import { SafeAreaListener } from 'react-native-safe-area-context';
+import { Uniwind } from 'uniwind';
 import { DesktopSidebar } from '@/components/DesktopSidebar';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -63,9 +65,16 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <StatusBar style="light" />
-        <UpdatePrompt />
-        <AppShell />
+        {/* Alimente le runtime d'insets d'Uniwind (rt.insets) pour que les
+            utilitaires safe-area (pt-safe, pb-safe…) fonctionnent. Requis en
+            version OSS d'Uniwind : cf. docs.uniwind.dev (SafeAreaListener →
+            Uniwind.updateInsets). SafeAreaListener émet les insets dès le
+            montage, y compris sur natif. */}
+        <SafeAreaListener onChange={({ insets }) => Uniwind.updateInsets(insets)}>
+          <StatusBar style="light" />
+          <UpdatePrompt />
+          <AppShell />
+        </SafeAreaListener>
       </AuthProvider>
     </QueryClientProvider>
   );
