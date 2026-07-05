@@ -1,8 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
-import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import {
+  Animated,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { useActionSheet } from '@/components/ActionSheet';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
@@ -28,6 +36,7 @@ export default function MovieDetailScreen() {
   const movieId = Number(params.id);
 
   const router = useRouter();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const { show: openSheet, sheet } = useActionSheet();
   const isDesktop = useBreakpoint() === 'desktop';
   const details = useMovieDetails(movieId);
@@ -234,6 +243,7 @@ export default function MovieDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       {sheet}
       <FloatingHeader
+        scrollY={scrollY}
         right={
           <FloatingButton
             icon={saved ? 'bookmark' : 'bookmark-outline'}
@@ -263,7 +273,14 @@ export default function MovieDetailScreen() {
           />
         }
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <Animated.ScrollView
+        contentContainerStyle={{ paddingBottom: 32 }}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+      >
         <View
           className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
           style={isDesktop ? { height: 360 } : undefined}
@@ -352,7 +369,7 @@ export default function MovieDetailScreen() {
             />
           ) : null}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </Screen>
   );
 }

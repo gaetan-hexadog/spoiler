@@ -82,6 +82,8 @@ export function CalendarEpisodeRow({
       ) : item.watched ? (
         <Ionicons name="checkmark-circle" size={30} color={colors.accent} />
       ) : (
+        // Passé mais non vu : case vide « à cocher » (tap = marquer vu),
+        // distincte de la coche pleine d'un épisode réellement vu.
         <Pressable
           onPress={(event) => {
             event.stopPropagation();
@@ -93,12 +95,12 @@ export function CalendarEpisodeRow({
             });
           }}
           disabled={markEpisode.isPending}
-          className="w-9 h-9 rounded-full bg-accent items-center justify-center"
+          className="w-8 h-8 rounded-full border-2 border-line items-center justify-center"
           style={({ pressed }) =>
-            pressed || markEpisode.isPending ? { opacity: 0.7 } : undefined
+            pressed || markEpisode.isPending ? { opacity: 0.6 } : undefined
           }
         >
-          <Ionicons name="checkmark" size={20} color={colors.accentText} />
+          <Ionicons name="checkmark" size={16} color={colors.textMuted} />
         </Pressable>
       )}
     </Pressable>

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   Linking,
   Pressable,
@@ -62,6 +63,7 @@ export default function ShowDetailScreen() {
   const params = useLocalSearchParams<{ id: string; tab?: string }>();
   const showId = Number(params.id);
   const router = useRouter();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [tab, setTab] = useState<Tab>(
     params.tab === 'episodes' ? 'episodes' : 'about'
   );
@@ -610,6 +612,7 @@ export default function ShowDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       {sheet}
       <FloatingHeader
+        scrollY={scrollY}
         right={
           <>
             {trackedShow ? (
@@ -623,7 +626,14 @@ export default function ShowDetailScreen() {
           </>
         }
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <Animated.ScrollView
+        contentContainerStyle={{ paddingBottom: 32 }}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+      >
         <View
           className={isDesktop ? 'bg-surface' : 'aspect-video bg-surface'}
           style={isDesktop ? { height: 360 } : undefined}
@@ -852,7 +862,7 @@ export default function ShowDetailScreen() {
             )}
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </Screen>
   );
 }

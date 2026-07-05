@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useActionSheet } from '@/components/ActionSheet';
 import { Screen } from '@/components/ui';
 import { useProfile } from '@/hooks/queries';
@@ -98,6 +99,7 @@ export default function SettingsScreen() {
   const { session } = useAuth();
   const profile = useProfile();
   const isDesktop = useBreakpoint() === 'desktop';
+  const insets = useSafeAreaInsets();
   const { show: openSheet, sheet } = useActionSheet();
   const [notifEnabled, setNotifEnabled] = usePersistedState(
     'notifications',
@@ -271,7 +273,9 @@ export default function SettingsScreen() {
       {sheet}
       <ScrollView
         contentContainerStyle={{
-          padding: 16,
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 12,
+          paddingBottom: 16,
           width: '100%',
           maxWidth: isDesktop ? 800 : 720,
           alignSelf: 'center',
