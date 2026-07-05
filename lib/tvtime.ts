@@ -12,6 +12,10 @@ export interface ImportRow {
 
 export interface ImportMovie {
   title: string;
+  /** Année de sortie (colonne release_date du v1) — désambiguïse les homonymes. */
+  year?: number;
+  /** Durée en minutes (colonne runtime du v1, en secondes). */
+  runtimeMinutes?: number;
 }
 
 export interface ParseResult {
@@ -66,6 +70,8 @@ const EPISODE_COLUMNS = ['episode_number', 'episode', 'number', 'e'];
 const MOVIE_COLUMNS = ['movie_name', 'movie_title'];
 const ENTITY_COLUMNS = ['entity_type'];
 const TYPE_COLUMNS = ['type'];
+const RELEASE_COLUMNS = ['release_date'];
+const RUNTIME_COLUMNS = ['runtime'];
 
 function findColumn(header: string[], candidates: string[]): number {
   const normalized = header.map((column) => column.trim().toLowerCase());
@@ -92,6 +98,8 @@ export function parseTvTimeCsv(text: string): ParseResult {
   const movieIndex = findColumn(header, MOVIE_COLUMNS);
   const entityIndex = findColumn(header, ENTITY_COLUMNS);
   const typeIndex = findColumn(header, TYPE_COLUMNS);
+  const releaseIndex = findColumn(header, RELEASE_COLUMNS);
+  const runtimeIndex = findColumn(header, RUNTIME_COLUMNS);
   const hasEpisodeColumns =
     showIndex !== -1 && seasonIndex !== -1 && episodeIndex !== -1;
   if (!hasEpisodeColumns && movieIndex === -1) {
@@ -122,14 +130,33 @@ export function parseTvTimeCsv(text: string): ParseResult {
     const entity =
       entityIndex !== -1 ? (row[entityIndex] ?? '').trim().toLowerCase() : '';
 
-    // Films (v2 uniquement) : entity_type « movie » ou colonne movie_name remplie.
+    // Films (v1) : entity_type « movie » / colonne movie_name remplie.
+    // release_date + runtime (secondes) accompagnent 99 % des lignes → ils
+    // désambiguïsent les titres homonymes au matching TMDB.
     const movieTitle =
       movieIndex !== -1 ? (row[movieIndex] ?? '').trim() : '';
     if (movieTitle && (entity === '' || entity.includes('movie'))) {
       const key = movieTitle.toLowerCase();
       if (!seenMovies.has(key)) {
         seenMovies.add(key);
-        movies.push({ title: movieTitle });
+        const release =
+          releaseIndex !== -1 ? (row[releaseIndex] ?? '').trim() : '';
+        const yearMatch = release.match(/^(\d{4})-/);
+        const year =
+          yearMatch && yearMatch[1] !== '0001'
+            ? Number.parseInt(yearMatch[1], 10)
+            : undefined;
+        const seconds =
+          runtimeIndex !== -1
+            ? Number.parseInt(row[runtimeIndex] ?? '', 10)
+            : Number.NaN;
+        movies.push({
+          title: movieTitle,
+          year,
+          runtimeMinutes: Number.isFinite(seconds) && seconds > 0
+            ? Math.round(seconds / 60)
+            : undefined,
+        });
       }
       continue;
     }

@@ -32,6 +32,8 @@ const ALLOWED_PARAMS = new Set([
   'query',
   'append_to_response',
   'include_adult',
+  'primary_release_year',
+  'year',
 ]);
 
 Deno.serve(async (req) => {

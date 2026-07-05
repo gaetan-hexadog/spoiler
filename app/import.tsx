@@ -88,8 +88,8 @@ export default function ImportScreen() {
         movieIndex++;
         setProgress(`Films ${movieIndex} / ${movies.length} — ${movie.title}`);
         try {
-          // Correspondance de titre vérifiée : jamais de mauvais film lié.
-          const match = await findMovieMatch(movie.title);
+          // Correspondance titre + année vérifiée : jamais de mauvais film lié.
+          const match = await findMovieMatch(movie.title, { year: movie.year });
           if (!match) {
             result.moviesUnmatched.push(movie.title);
             continue;

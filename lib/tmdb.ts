@@ -185,8 +185,12 @@ export function searchShows(query: string, page = 1) {
   return tmdb<Paginated<TmdbShowSummary>>('/search/tv', { query, page });
 }
 
-export function searchMovies(query: string, page = 1) {
-  return tmdb<Paginated<TmdbMovieSummary>>('/search/movie', { query, page });
+export function searchMovies(query: string, page = 1, year?: number) {
+  return tmdb<Paginated<TmdbMovieSummary>>('/search/movie', {
+    query,
+    page,
+    ...(year ? { primary_release_year: year } : {}),
+  });
 }
 
 export function getShowDetails(id: number) {
