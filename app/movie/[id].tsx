@@ -7,19 +7,17 @@ import { useActionSheet } from '@/components/ActionSheet';
 import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
 import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
+import { MovieActionBar } from '@/components/MovieActionBar';
 import { PosterCard } from '@/components/PosterCard';
-import { RatingStars } from '@/components/RatingStars';
 import { DetailSkeleton } from '@/components/Skeleton';
 import { WhereToWatch } from '@/components/WhereToWatch';
-import { Button, Screen } from '@/components/ui';
+import { Screen } from '@/components/ui';
 import {
   useAddMovie,
   useMovieDetails,
   useMovieRecommendations,
   useMovies,
   useRemoveMovie,
-  useSetMovieRating,
-  useSetMovieStatus,
 } from '@/hooks/queries';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { findTrailer, imageUrl } from '@/lib/tmdb';
@@ -35,9 +33,7 @@ export default function MovieDetailScreen() {
   const details = useMovieDetails(movieId);
   const movies = useMovies();
   const addMovie = useAddMovie();
-  const setStatus = useSetMovieStatus();
   const removeMovie = useRemoveMovie();
-  const setRating = useSetMovieRating();
   const recommendations = useMovieRecommendations(movieId);
 
   // Recommandations : ne pas re-proposer les films déjà dans ma liste.
@@ -76,38 +72,40 @@ export default function MovieDetailScreen() {
     .slice(0, 12);
 
   // --- Blocs réutilisés par les layouts mobile et desktop ---
-  const actionsEl = !saved ? (
-    <Button
-      title="✓ Je l'ai déjà vu"
-      loading={addMovie.isPending}
-      onPress={() =>
-        addMovie.mutate({
-          tmdb_id: movie.id,
-          title: movie.title,
-          poster_path: movie.poster_path,
-          status: 'watched',
-        })
-      }
-    />
-  ) : saved.status === 'watchlist' ? (
-    <Button
-      title="✓ Marquer comme vu"
-      loading={setStatus.isPending}
-      onPress={() => setStatus.mutate({ tmdbId: movieId, status: 'watched' })}
-    />
-  ) : (
-    <View className="gap-3">
-      <Text className="text-success text-[15px] font-extrabold">✓ Vu</Text>
-      <RatingStars
-        value={saved.rating}
-        onChange={(rating) => setRating.mutate({ tmdbId: movieId, rating })}
-      />
-      <Button
-        title="Remettre dans la watchlist"
-        variant="ghost"
-        loading={setStatus.isPending}
-        onPress={() => setStatus.mutate({ tmdbId: movieId, status: 'watchlist' })}
-      />
+  // Barre d'actions unifiée (Vu · Watchlist · Noter).
+  const actionsEl = <MovieActionBar movie={movie} />;
+
+  // Méta présentée en chips (année · durée · genres · note).
+  const metaChips = (
+    <View className="flex-row flex-wrap items-center gap-1.5">
+      {movie.release_date ? (
+        <View className="bg-surface rounded-full px-2.5 py-1">
+          <Text className="text-muted text-[12px] font-semibold">
+            {movie.release_date.slice(0, 4)}
+          </Text>
+        </View>
+      ) : null}
+      {movie.runtime ? (
+        <View className="bg-surface rounded-full px-2.5 py-1">
+          <Text className="text-muted text-[12px] font-semibold">
+            {movie.runtime} min
+          </Text>
+        </View>
+      ) : null}
+      {movie.genres.slice(0, 3).map((genre) => (
+        <View key={genre.name} className="bg-surface rounded-full px-2.5 py-1">
+          <Text className="text-muted text-[12px] font-semibold">
+            {genre.name}
+          </Text>
+        </View>
+      ))}
+      {movie.vote_average ? (
+        <View className="bg-surface rounded-full px-2.5 py-1">
+          <Text className="text-accent text-[12px] font-bold">
+            ★ {movie.vote_average.toFixed(1)}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -216,16 +214,7 @@ export default function MovieDetailScreen() {
                 <Text className="text-fg text-3xl font-extrabold">
                   {movie.title}
                 </Text>
-                <Text className="text-muted text-sm">
-                  {movie.release_date?.slice(0, 4)}
-                  {movie.runtime ? ` · ${movie.runtime} min` : ''}
-                  {movie.genres.length
-                    ? ` · ${movie.genres.slice(0, 3).map((g) => g.name).join(', ')}`
-                    : ''}
-                  {movie.vote_average
-                    ? `  ·  ★ ${movie.vote_average.toFixed(1)}`
-                    : ''}
-                </Text>
+                {metaChips}
               </View>
               {movie.overview ? (
                 <Text className="text-fg text-sm leading-[22px] opacity-90">
@@ -322,21 +311,7 @@ export default function MovieDetailScreen() {
             <Text className="text-fg text-2xl font-extrabold">
               {movie.title}
             </Text>
-            <Text className="text-muted text-[13px]">
-              {movie.release_date?.slice(0, 4)}
-              {movie.runtime ? ` · ${movie.runtime} min` : ''}
-              {movie.genres.length
-                ? ` · ${movie.genres
-                    .slice(0, 3)
-                    .map((genre) => genre.name)
-                    .join(', ')}`
-                : ''}
-            </Text>
-            {movie.vote_average ? (
-              <Text className="text-accent text-[13px] font-bold">
-                ★ {movie.vote_average.toFixed(1)}
-              </Text>
-            ) : null}
+            {metaChips}
           </View>
         </View>
 
@@ -350,52 +325,7 @@ export default function MovieDetailScreen() {
                 </Text>
               ) : null}
 
-              {/* Ajout/retrait de la watchlist = bookmark du header. Ici, on ne
-                  garde que les actions de statut que le bookmark ne couvre pas. */}
-              <View className="gap-3">
-            {!saved ? (
-              <Button
-                title="✓ Je l'ai déjà vu"
-                loading={addMovie.isPending}
-                onPress={() =>
-                  addMovie.mutate({
-                    tmdb_id: movie.id,
-                    title: movie.title,
-                    poster_path: movie.poster_path,
-                    status: 'watched',
-                  })
-                }
-              />
-            ) : saved.status === 'watchlist' ? (
-              <Button
-                title="✓ Marquer comme vu"
-                loading={setStatus.isPending}
-                onPress={() =>
-                  setStatus.mutate({ tmdbId: movieId, status: 'watched' })
-                }
-              />
-            ) : (
-              <>
-                <Text className="text-success text-[17px] font-extrabold text-center">
-                  ✓ Vu
-                </Text>
-                <RatingStars
-                  value={saved.rating}
-                  onChange={(rating) =>
-                    setRating.mutate({ tmdbId: movieId, rating })
-                  }
-                />
-                <Button
-                  title="Remettre dans la watchlist"
-                  variant="ghost"
-                  loading={setStatus.isPending}
-                  onPress={() =>
-                    setStatus.mutate({ tmdbId: movieId, status: 'watchlist' })
-                  }
-                />
-              </>
-            )}
-              </View>
+              {actionsEl}
             </View>
             <View className={isDesktop ? 'flex-[2]' : ''}>
               <WhereToWatch providers={movie['watch/providers']?.results?.FR} />

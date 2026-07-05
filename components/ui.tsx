@@ -82,15 +82,17 @@ export function Button({
   );
 }
 
-export function Input(props: TextInputProps) {
-  return (
+export const Input = React.forwardRef<TextInput, TextInputProps>(
+  (props, ref) => (
     <TextInput
+      ref={ref}
       placeholderTextColor={colors.textMuted}
       className="bg-surface rounded-lg border border-line text-fg px-4 py-3 text-[15px]"
       {...props}
     />
-  );
-}
+  )
+);
+Input.displayName = 'Input';
 
 export function Loading() {
   return (

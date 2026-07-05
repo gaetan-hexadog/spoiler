@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
   View,
 } from 'react-native';
 import { Logo } from '@/components/Logo';
@@ -13,8 +14,10 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
 
   async function signIn() {
+    if (!email || !password || loading) return;
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
@@ -41,12 +44,18 @@ export default function LoginScreen() {
               autoComplete="email"
               value={email}
               onChangeText={setEmail}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
             <Input
+              ref={passwordRef}
               placeholder="Mot de passe"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
+              returnKeyType="go"
+              onSubmitEditing={signIn}
             />
             <Button
               title="Se connecter"

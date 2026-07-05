@@ -15,6 +15,7 @@ import { Carousel } from '@/components/Carousel';
 import { CastRow } from '@/components/CastRow';
 import { EpisodeCard } from '@/components/EpisodeCard';
 import { FloatingButton, FloatingHeader } from '@/components/FloatingHeader';
+import { NextEpisodeBanner } from '@/components/NextEpisodeBanner';
 import { PosterCard } from '@/components/PosterCard';
 import { RatingStars } from '@/components/RatingStars';
 import { DetailSkeleton } from '@/components/Skeleton';
@@ -110,6 +111,9 @@ export default function ShowDetailScreen() {
     showId,
     tab === 'episodes' ? activeSeason : null
   );
+  // Saison du prochain épisode (still + nom + durée pour la bannière),
+  // chargée même hors onglet Épisodes.
+  const nextSeasonDetails = useSeasonDetails(showId, next?.season ?? null);
 
   // Recommandations : ne pas re-proposer ce qu'on suit déjà.
   const trackedIds = useMemo(
@@ -146,6 +150,56 @@ export default function ShowDetailScreen() {
   const seen = watchedCount(watched);
   const backdrop = imageUrl(show.backdrop_path, 'w780');
   const poster = imageUrl(show.poster_path, 'w342');
+
+  const upToDate = isUpToDate(
+    show.seasons,
+    watched,
+    show.last_episode_to_air ?? null
+  );
+  const nextEpisodeData = next
+    ? nextSeasonDetails.data?.episodes.find(
+        (episode) => episode.episode_number === next.episode
+      )
+    : undefined;
+  // Méta présentée en chips (année · genres · note), réutilisée mobile + desktop.
+  const metaChips = (
+    <>
+      {show.first_air_date ? (
+        <View className="bg-surface rounded-full px-2.5 py-1">
+          <Text className="text-muted text-[12px] font-semibold">
+            {show.first_air_date.slice(0, 4)}
+          </Text>
+        </View>
+      ) : null}
+      {show.genres.slice(0, 3).map((genre) => (
+        <View key={genre.name} className="bg-surface rounded-full px-2.5 py-1">
+          <Text className="text-muted text-[12px] font-semibold">
+            {genre.name}
+          </Text>
+        </View>
+      ))}
+      {show.vote_average ? (
+        <View className="bg-surface rounded-full px-2.5 py-1">
+          <Text className="text-accent text-[12px] font-bold">
+            ★ {show.vote_average.toFixed(1)}
+          </Text>
+        </View>
+      ) : null}
+    </>
+  );
+  // Bannière « À voir maintenant » : action principale remontée sous le titre.
+  const nextBanner =
+    trackedShow && next && !upToDate ? (
+      <NextEpisodeBanner
+        showId={showId}
+        next={next}
+        stillPath={nextEpisodeData?.still_path ?? show.backdrop_path}
+        episodeName={nextEpisodeData?.name}
+        runtime={nextEpisodeData?.runtime}
+        seen={seen}
+        total={total}
+      />
+    ) : null;
 
   // « En cours » mais tout vu → « À jour » (le statut en base reste watching).
   const statusMeta = trackedShow
@@ -518,16 +572,11 @@ export default function ShowDetailScreen() {
                 <Text className="text-fg text-3xl font-extrabold">
                   {show.name}
                 </Text>
-                <Text className="text-muted text-sm">
-                  {show.first_air_date?.slice(0, 4)}
-                  {show.genres.length
-                    ? ` · ${show.genres.slice(0, 3).map((g) => g.name).join(', ')}`
-                    : ''}
-                  {show.vote_average
-                    ? `  ·  ★ ${show.vote_average.toFixed(1)}`
-                    : ''}
-                </Text>
+                <View className="flex-row flex-wrap items-center gap-1.5">
+                  {metaChips}
+                </View>
               </View>
+              {nextBanner}
               {tabSelector}
               {tab === 'about' ? (
                 <View className="gap-6">
@@ -606,23 +655,10 @@ export default function ShowDetailScreen() {
               className="w-24 aspect-[2/3] rounded-xl border-2 border-line"
             />
           ) : null}
-          <View className="flex-1 pb-1 gap-1">
+          <View className="flex-1 pb-1 gap-2">
             <Text className="text-fg text-2xl font-extrabold">{show.name}</Text>
-            <Text className="text-muted text-[13px]">
-              {show.first_air_date?.slice(0, 4)}
-              {show.genres.length
-                ? ` · ${show.genres
-                    .slice(0, 3)
-                    .map((genre) => genre.name)
-                    .join(', ')}`
-                : ''}
-            </Text>
-            <View className="flex-row items-center gap-2">
-              {show.vote_average ? (
-                <Text className="text-accent text-[13px] font-bold">
-                  ★ {show.vote_average.toFixed(1)}
-                </Text>
-              ) : null}
+            <View className="flex-row flex-wrap items-center gap-1.5">
+              {metaChips}
               {statusMeta ? (
                 <View className={`px-2.5 py-1 rounded-full ${statusMeta.bg}`}>
                   <Text className={`text-[11px] font-bold ${statusMeta.text}`}>
@@ -633,6 +669,8 @@ export default function ShowDetailScreen() {
             </View>
           </View>
         </View>
+
+        {nextBanner ? <View className="pt-3">{nextBanner}</View> : null}
 
         <View className="p-4 gap-4">
           {!trackedShow ? (

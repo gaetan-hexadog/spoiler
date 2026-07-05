@@ -13,6 +13,7 @@ import {
 import { useActionSheet } from '@/components/ActionSheet';
 import { BottomSheet } from '@/components/BottomSheet';
 import { Carousel } from '@/components/Carousel';
+import { HomeHero } from '@/components/HomeHero';
 import { MovieRowCard } from '@/components/MovieRowCard';
 import { PosterCard } from '@/components/PosterCard';
 import { ShowGridCard } from '@/components/ShowGridCard';
@@ -64,33 +65,6 @@ const MOVIE_FILTERS: { value: MovieStatus; label: string }[] = [
   { value: 'watchlist', label: 'À voir' },
   { value: 'watched', label: 'Vus' },
 ];
-
-function Chip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`px-3.5 py-2 rounded-full ${
-        active ? 'bg-accent' : 'bg-surface'
-      }`}
-    >
-      <Text
-        className={`text-[13px] font-semibold ${
-          active ? 'text-accent-fg' : 'text-muted'
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
 
 export default function LibraryScreen() {
   const router = useRouter();
@@ -358,14 +332,17 @@ export default function LibraryScreen() {
   const showsHeader = (
     <View>
       {upNextShows.length && !searching ? (
+        <HomeHero show={upNextShows[0]} allWatched={watched.data ?? []} />
+      ) : null}
+      {upNextShows.length > 1 && !searching ? (
         <View className="gap-3 pt-2 pb-2">
           <Text className="text-fg text-lg font-bold px-4">
-            À voir ensuite
+            Dans la foulée
           </Text>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
-            data={upNextShows}
+            data={upNextShows.slice(1)}
             keyExtractor={(item) => `next-${item.tmdb_id}`}
             contentContainerStyle={{ paddingHorizontal: 16 }}
             renderItem={({ item }) => (
@@ -411,16 +388,44 @@ export default function LibraryScreen() {
       </View>
     ) : null;
 
+  const filterOptions: { value: string; label: string }[] =
+    segment === 'shows' ? SHOW_FILTERS : MOVIE_FILTERS;
+  const activeFilter = segment === 'shows' ? showFilter : movieFilter;
+
   const sortModalElement = (
     <BottomSheet visible={sortModal} onClose={() => setSortModal(false)}>
-      <Text className="text-fg text-lg font-bold mb-2">Trier par</Text>
+      <Text className="text-fg text-lg font-bold mb-2">Afficher</Text>
+      {filterOptions.map((option) => {
+        const active = activeFilter === option.value;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() =>
+              segment === 'shows'
+                ? setShowFilter(option.value as ShowFilter)
+                : setMovieFilter(option.value as MovieStatus)
+            }
+            className="flex-row items-center justify-between py-3 border-b border-line/50"
+          >
+            <Text
+              className={`text-[15px] ${
+                active ? 'text-accent font-bold' : 'text-fg font-medium'
+              }`}
+            >
+              {option.label}
+            </Text>
+            {active ? (
+              <Ionicons name="checkmark" size={20} color={colors.accent} />
+            ) : null}
+          </Pressable>
+        );
+      })}
+
+      <Text className="text-fg text-lg font-bold mb-2 mt-6">Trier par</Text>
       {SORTS.map((option) => (
         <Pressable
           key={option.value}
-          onPress={() => {
-            setSort(option.value);
-            setSortModal(false);
-          }}
+          onPress={() => setSort(option.value)}
           className="flex-row items-center justify-between py-3 border-b border-line/50"
         >
           <Text
@@ -437,133 +442,140 @@ export default function LibraryScreen() {
           ) : null}
         </Pressable>
       ))}
+
+      <Pressable
+        onPress={() => setSortModal(false)}
+        className="mt-6 bg-accent rounded-xl py-3 items-center"
+        style={({ pressed }) => (pressed ? { opacity: 0.8 } : undefined)}
+      >
+        <Text className="text-accent-fg font-bold text-[15px]">Terminé</Text>
+      </Pressable>
     </BottomSheet>
   );
 
-  const header = (
-    <View className="gap-3 px-4 pt-3 pb-3">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-fg text-2xl font-extrabold">Ma liste</Text>
-        <View className="flex-row gap-2">
+  // Un filtre non-défaut est actif → le bouton filtre s'allume (les chips ont
+  // migré dans la modale, donc on signale l'état ici).
+  const filterActive =
+    segment === 'shows' ? showFilter !== 'watching' : movieFilter !== 'watchlist';
+
+  const actionButtons = (
+    <View className="flex-row gap-2">
+      <Pressable
+        onPress={() => {
+          if (searchOpen) setSearch('');
+          setSearchOpen(!searchOpen);
+        }}
+        hitSlop={6}
+        className={`w-9 h-9 rounded-lg items-center justify-center ${
+          searchOpen ? 'bg-accent' : 'bg-surface'
+        }`}
+      >
+        <Ionicons
+          name={searchOpen ? 'close' : 'search'}
+          size={16}
+          color={searchOpen ? colors.accentText : colors.text}
+        />
+      </Pressable>
+      <Pressable
+        onPress={() => setSortModal(true)}
+        hitSlop={6}
+        className={`w-9 h-9 rounded-lg items-center justify-center ${
+          filterActive ? 'bg-accent' : 'bg-surface'
+        }`}
+      >
+        <Ionicons
+          name="options-outline"
+          size={16}
+          color={filterActive ? colors.accentText : colors.text}
+        />
+      </Pressable>
+      <Pressable
+        onPress={() => setGrid(!grid)}
+        hitSlop={6}
+        className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
+      >
+        <Ionicons name={grid ? 'list' : 'grid'} size={16} color={colors.text} />
+      </Pressable>
+    </View>
+  );
+
+  const segmentControl = (
+    <View
+      className={`${wide ? '' : 'flex-1'} flex-row bg-surface rounded-lg p-[3px]`}
+    >
+      {(
+        [
+          ['shows', 'Séries', watchingCount],
+          ['movies', 'Films', watchlistCount],
+        ] as [Segment, string, number][]
+      ).map(([value, label, count]) => {
+        const active = segment === value;
+        return (
           <Pressable
-            onPress={() => {
-              if (searchOpen) setSearch('');
-              setSearchOpen(!searchOpen);
-            }}
-            hitSlop={6}
-            className={`w-9 h-9 rounded-lg items-center justify-center ${
-              searchOpen ? 'bg-accent' : 'bg-surface'
+            key={value}
+            onPress={() => setSegment(value)}
+            className={`${wide ? 'px-6' : 'flex-1'} py-2 rounded-md flex-row items-center justify-center gap-1.5 ${
+              active ? 'bg-accent' : ''
             }`}
           >
-            <Ionicons
-              name={searchOpen ? 'close' : 'search'}
-              size={16}
-              color={searchOpen ? colors.accentText : colors.text}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => setSortModal(true)}
-            hitSlop={6}
-            className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
-          >
-            <Ionicons name="funnel-outline" size={16} color={colors.text} />
-          </Pressable>
-          <Pressable
-            onPress={() => setGrid(!grid)}
-            hitSlop={6}
-            className="w-9 h-9 rounded-lg bg-surface items-center justify-center"
-          >
-            <Ionicons
-              name={grid ? 'list' : 'grid'}
-              size={16}
-              color={colors.text}
-            />
-          </Pressable>
-        </View>
-      </View>
-      <View className="flex-row items-center gap-2">
-        <View
-          className={`${wide ? 'self-start' : 'flex-1'} flex-row bg-surface rounded-lg p-[3px]`}
-        >
-          {(
-            [
-              ['shows', 'Séries', watchingCount],
-              ['movies', 'Films', watchlistCount],
-            ] as [Segment, string, number][]
-          ).map(([value, label, count]) => {
-            const active = segment === value;
-            return (
-              <Pressable
-                key={value}
-                onPress={() => setSegment(value)}
-                className={`${wide ? 'px-6' : 'flex-1'} py-2 rounded-md flex-row items-center justify-center gap-1.5 ${
-                  active ? 'bg-accent' : ''
+            <Text
+              className={`font-bold text-sm ${
+                active ? 'text-accent-fg' : 'text-muted'
+              }`}
+            >
+              {label}
+            </Text>
+            {count > 0 ? (
+              <View
+                className={`px-1.5 py-0.5 rounded-full min-w-[20px] items-center ${
+                  active ? 'bg-accent-fg/15' : 'bg-surface-light'
                 }`}
               >
                 <Text
-                  className={`font-bold text-sm ${
+                  className={`text-[11px] font-bold ${
                     active ? 'text-accent-fg' : 'text-muted'
                   }`}
                 >
-                  {label}
+                  {count}
                 </Text>
-                {count > 0 ? (
-                  <View
-                    className={`px-1.5 py-0.5 rounded-full min-w-[20px] items-center ${
-                      active ? 'bg-accent-fg/15' : 'bg-surface-light'
-                    }`}
-                  >
-                    <Text
-                      className={`text-[11px] font-bold ${
-                        active ? 'text-accent-fg' : 'text-muted'
-                      }`}
-                    >
-                      {count}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
+              </View>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const searchInput = (
+    <Input
+      placeholder={
+        segment === 'shows'
+          ? 'Chercher dans mes séries…'
+          : 'Chercher dans mes films…'
+      }
+      value={search}
+      onChangeText={setSearch}
+      autoFocus
+      autoCorrect={false}
+    />
+  );
+
+  // Header compact unifié (mobile + desktop) : segment Séries/Films + actions
+  // sur une seule ligne. Filtres et tri vivent dans la modale (bouton options).
+  const header = (
+    <View className="px-4 pt-3 pb-3 gap-3">
+      <View className="flex-row items-center gap-2.5">
+        {segmentControl}
+        {wide ? (
+          searchOpen ? (
+            <View className="flex-1">{searchInput}</View>
+          ) : (
+            <View className="flex-1" />
+          )
+        ) : null}
+        {actionButtons}
       </View>
-      {searchOpen ? (
-        <Input
-          placeholder={
-            segment === 'shows'
-              ? 'Chercher dans mes séries…'
-              : 'Chercher dans mes films…'
-          }
-          value={search}
-          onChangeText={setSearch}
-          autoFocus
-          autoCorrect={false}
-        />
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {segment === 'shows'
-            ? SHOW_FILTERS.map((filter) => (
-                <Chip
-                  key={filter.value}
-                  label={filter.label}
-                  active={showFilter === filter.value}
-                  onPress={() => setShowFilter(filter.value)}
-                />
-              ))
-            : MOVIE_FILTERS.map((filter) => (
-                <Chip
-                  key={filter.value}
-                  label={filter.label}
-                  active={movieFilter === filter.value}
-                  onPress={() => setMovieFilter(filter.value)}
-                />
-              ))}
-        </ScrollView>
-      )}
+      {!wide && searchOpen ? searchInput : null}
     </View>
   );
 
