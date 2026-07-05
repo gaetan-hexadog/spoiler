@@ -107,9 +107,9 @@ function moviesFromTvTimeV1(text) {
 
 // --- TMDB (direct : script local, jeton depuis l'env) -----------------------
 
-async function tmdbSearch(title) {
+async function tmdbSearch(title, lang = 'fr-FR') {
   const url = new URL('https://api.themoviedb.org/3/search/movie');
-  url.searchParams.set('language', 'fr-FR');
+  url.searchParams.set('language', lang);
   url.searchParams.set('query', title);
   const headers = { accept: 'application/json' };
   if (TMDB_TOKEN.includes('.')) headers.Authorization = `Bearer ${TMDB_TOKEN}`;
@@ -174,6 +174,10 @@ console.log(`Base : ${dbMovies.length} films\n`);
 
 const suspects = []; // { source, wrongId, wrongTitle, rightId, rightTitle, row }
 const unresolved = []; // titres source sans correspondance sûre
+// Toute ligne DB confirmée par AU MOINS UN titre source est exonérée : une
+// ligne peut être le mauvais choix d'un titre ET le bon choix d'un autre
+// (doublons Netflix/TV Time, titres localisés).
+const verifiedIds = new Set();
 let okCount = 0;
 let done = 0;
 
@@ -186,15 +190,28 @@ await Promise.all(
       if (done % 200 === 0) console.log(`… ${done}/${uniqueTitles.length}`);
       let results;
       try {
-        results = await tmdbSearch(title);
+        results = await tmdbSearch(title, 'fr-FR');
       } catch {
         unresolved.push(`${title} (erreur TMDB)`);
         continue;
       }
       const wanted = normalize(title);
       const oldPick = results[0] ?? null; // ce que faisaient les imports
-      const good = newMatch(wanted, results);
-      if (!good) unresolved.push(title);
+      let good = newMatch(wanted, results);
+      // Sources Netflix souvent en ANGLAIS : si le fr-FR ne confirme rien
+      // (titre FR + titre original seulement), re-vérifier avec les titres
+      // anglais ; « Society of the Snow » ≡ en:« Society of the Snow »
+      // ≡ fr:« Le Cercle des neiges » (id identique).
+      if (!good) {
+        try {
+          const resultsEn = await tmdbSearch(title, 'en-US');
+          good = newMatch(wanted, resultsEn);
+        } catch {
+          // tant pis, on reste sur le résultat fr
+        }
+      }
+      if (good) verifiedIds.add(good.id);
+      else unresolved.push(title);
       if (!oldPick) continue;
       const inDb = dbById.get(oldPick.id);
       if (!inDb) continue; // l'ancien choix n'est pas en base → rien à nettoyer
@@ -212,9 +229,12 @@ await Promise.all(
   })
 );
 
-// Dédoublonner par wrongId (plusieurs titres source peuvent pointer au même).
+// Exonérer les lignes confirmées ailleurs, puis dédoublonner par wrongId.
 const byWrong = new Map();
-for (const s of suspects) if (!byWrong.has(s.wrongId)) byWrong.set(s.wrongId, s);
+for (const s of suspects) {
+  if (verifiedIds.has(s.wrongId)) continue; // confirmée par un autre titre
+  if (!byWrong.has(s.wrongId)) byWrong.set(s.wrongId, s);
+}
 const finalSuspects = [...byWrong.values()];
 
 console.log(`\n=== RÉSULTAT ===`);
