@@ -1,21 +1,21 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Animated, Image, Pressable, Text, View } from 'react-native';
 import { useHoverScale } from '@/hooks/useHoverScale';
 import { imageUrl } from '@/lib/tmdb';
-import { colors } from '@/lib/theme';
 
 /** Statut d'un item déjà présent dans la bibliothèque de l'utilisateur. */
 export type LibraryBadge = 'watched' | 'watching' | 'planned' | 'stopped';
 
+// Badge texte en pastille (coin haut-gauche), conforme à la maquette :
+// SUIVI (jaune) · VU (vert) · À VOIR (sombre) · ARRÊTÉ (rouge).
 const BADGE_STYLE: Record<
   LibraryBadge,
-  { icon: keyof typeof Ionicons.glyphMap; bg: string; fg: string }
+  { label: string; bg: string; fg: string }
 > = {
-  watched: { icon: 'checkmark', bg: colors.success, fg: '#04231A' },
-  watching: { icon: 'play', bg: colors.accent, fg: colors.accentText },
-  planned: { icon: 'bookmark', bg: colors.surfaceLight, fg: colors.text },
-  stopped: { icon: 'close', bg: colors.danger, fg: '#fff' },
+  watching: { label: 'SUIVI', bg: 'rgba(255,212,73,0.92)', fg: '#1A1A05' },
+  watched: { label: 'VU', bg: 'rgba(76,195,138,0.92)', fg: '#04140C' },
+  planned: { label: 'À VOIR', bg: 'rgba(13,19,33,0.82)', fg: '#F5F7FA' },
+  stopped: { label: 'ARRÊTÉ', bg: 'rgba(229,72,77,0.92)', fg: '#FFFFFF' },
 };
 
 /**
@@ -69,10 +69,23 @@ export function PosterCard({
         )}
         {badgeStyle ? (
           <View
-            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full items-center justify-center"
-            style={{ backgroundColor: badgeStyle.bg }}
+            className="absolute top-1.5 left-1.5 rounded-md"
+            style={{
+              backgroundColor: badgeStyle.bg,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+            }}
           >
-            <Ionicons name={badgeStyle.icon} size={14} color={badgeStyle.fg} />
+            <Text
+              style={{
+                color: badgeStyle.fg,
+                fontSize: 9,
+                fontWeight: '800',
+                letterSpacing: 0.3,
+              }}
+            >
+              {badgeStyle.label}
+            </Text>
           </View>
         ) : null}
       </View>

@@ -81,7 +81,7 @@ export function NextEpisodeBanner({
         </Pressable>
       </View>
 
-      <View className="flex-row items-center gap-2 mt-3">
+      {/* <View className="flex-row items-center gap-2 mt-3">
         <View className="flex-1 h-1.5 rounded-full bg-surface-light overflow-hidden">
           <View
             className="h-full bg-accent rounded-full"
@@ -91,7 +91,7 @@ export function NextEpisodeBanner({
         <Text className="text-muted text-[11px] font-bold">
           {seen}/{total} · {pct}%
         </Text>
-      </View>
+      </View> */}
     </View>
   );
 }
