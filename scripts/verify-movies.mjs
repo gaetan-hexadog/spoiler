@@ -176,8 +176,9 @@ const suspects = []; // { source, wrongId, wrongTitle, rightId, rightTitle, row 
 const unresolved = []; // titres source sans correspondance sûre
 // Toute ligne DB confirmée par AU MOINS UN titre source est exonérée : une
 // ligne peut être le mauvais choix d'un titre ET le bon choix d'un autre
-// (doublons Netflix/TV Time, titres localisés).
-const verifiedIds = new Set();
+// (doublons Netflix/TV Time, titres localisés). On garde aussi le détail
+// pour AJOUTER tout film vérifié absent de la base (raté par l'ancien import).
+const verified = new Map(); // id → { id, title, poster_path }
 let okCount = 0;
 let done = 0;
 
@@ -210,8 +211,15 @@ await Promise.all(
           // tant pis, on reste sur le résultat fr
         }
       }
-      if (good) verifiedIds.add(good.id);
-      else unresolved.push(title);
+      if (good) {
+        if (!verified.has(good.id)) {
+          verified.set(good.id, {
+            id: good.id,
+            title: good.title,
+            poster_path: good.poster_path ?? null,
+          });
+        }
+      } else unresolved.push(title);
       if (!oldPick) continue;
       const inDb = dbById.get(oldPick.id);
       if (!inDb) continue; // l'ancien choix n'est pas en base → rien à nettoyer
@@ -232,24 +240,33 @@ await Promise.all(
 // Exonérer les lignes confirmées ailleurs, puis dédoublonner par wrongId.
 const byWrong = new Map();
 for (const s of suspects) {
-  if (verifiedIds.has(s.wrongId)) continue; // confirmée par un autre titre
+  if (verified.has(s.wrongId)) continue; // confirmée par un autre titre
   if (!byWrong.has(s.wrongId)) byWrong.set(s.wrongId, s);
 }
 const finalSuspects = [...byWrong.values()];
 
+// Films vérifiés ABSENTS de la base : ratés par l'ancien import (erreur,
+// mauvaise ligne déjà nettoyée…) — à ajouter. Couvre aussi le cas de deux
+// titres mal liés vers le même mauvais film (un seul suspect conservé, mais
+// les DEUX bons films finissent ici s'ils manquent).
+const missing = [...verified.values()].filter((v) => !dbById.has(v.id));
+
 console.log(`\n=== RÉSULTAT ===`);
 console.log(`Bien liés (vérifiés) : ${okCount}`);
-console.log(`SUSPECTS en base : ${finalSuspects.length}`);
+console.log(`SUSPECTS en base (à supprimer) : ${finalSuspects.length}`);
+console.log(`MANQUANTS vérifiés (à ajouter) : ${missing.length}`);
 console.log(`Titres source sans correspondance sûre : ${unresolved.length}`);
 
 const lines = [];
-lines.push('SUSPECTS (mauvais film probablement lié) :');
+lines.push('SUSPECTS (mauvais film probablement lié — supprimés par --fix) :');
 for (const s of finalSuspects) {
   lines.push(
     `· source « ${s.source} » → en base : « ${s.wrongTitle} » (tmdb ${s.wrongId})` +
       (s.rightTitle ? ` → correct : « ${s.rightTitle} » (tmdb ${s.rightId})` : ' → aucun candidat sûr')
   );
 }
+lines.push('', 'MANQUANTS (films vérifiés absents de la base — ajoutés par --fix) :');
+for (const m of missing) lines.push(`· ${m.title} (tmdb ${m.id})`);
 lines.push('', 'TITRES SOURCE SANS CORRESPONDANCE SÛRE (à traiter à la main) :');
 for (const t of unresolved) lines.push(`· ${t}`);
 const reportPath = new URL('../verify-movies-report.txt', import.meta.url).pathname;
@@ -257,31 +274,50 @@ writeFileSync(reportPath, lines.join('\n'));
 console.log(`\nRapport complet : ${reportPath}`);
 console.log(finalSuspects.slice(0, 20).map((s) => `· « ${s.source} » → base « ${s.wrongTitle} »${s.rightTitle ? ` → correct « ${s.rightTitle} »` : ''}`).join('\n'));
 
-if (FIX && finalSuspects.length) {
-  console.log('\n--fix : application…');
+if (FIX && (finalSuspects.length || missing.length)) {
+  // Garde multi-comptes : ce script opère avec la clé service (tous les
+  // utilisateurs) — on n'écrit que si la base ne contient qu'un seul user.
+  const userIds = new Set(dbMovies.map((m) => m.user_id));
+  if (userIds.size > 1) {
+    console.error('\n--fix refusé : plusieurs utilisateurs en base. Filtre requis.');
+    process.exit(1);
+  }
+  const userId = dbMovies[0]?.user_id;
+  // Dates héritées des lignes remplacées (le bon film garde la date du faux).
+  const dateFor = new Map();
+  for (const s of finalSuspects) {
+    if (s.rightId && s.row.watched_at) dateFor.set(s.rightId, s.row.watched_at);
+  }
+
+  console.log('\n--fix : suppression des suspects…');
   for (const s of finalSuspects) {
     const { error: delError } = await supabase
       .from('user_movies')
       .delete()
       .eq('id', s.row.id);
-    if (delError) { console.error(`  ✗ suppression ${s.wrongTitle}: ${delError.message}`); continue; }
-    if (s.rightId && !dbById.has(s.rightId)) {
-      const { error: insError } = await supabase.from('user_movies').upsert(
-        {
-          user_id: s.row.user_id,
-          tmdb_id: s.rightId,
-          title: s.rightTitle,
-          poster_path: s.rightPoster,
-          status: 'watched',
-          watched_at: s.row.watched_at ?? new Date().toISOString(),
-        },
-        { onConflict: 'user_id,tmdb_id', ignoreDuplicates: true }
-      );
-      if (insError) { console.error(`  ✗ insertion ${s.rightTitle}: ${insError.message}`); continue; }
-    }
-    console.log(`  ✓ « ${s.wrongTitle} » → ${s.rightTitle ?? '(supprimé)'}`);
+    if (delError) console.error(`  ✗ ${s.wrongTitle}: ${delError.message}`);
+    else console.log(`  ✓ supprimé « ${s.wrongTitle} »`);
   }
-  console.log('Terminé.');
-} else if (finalSuspects.length) {
+
+  console.log('\n--fix : ajout des manquants…');
+  for (const m of missing) {
+    // upsert + contrainte unique (user_id, tmdb_id) : aucun doublon possible,
+    // même relancé plusieurs fois ; une ligne existante n'est jamais modifiée.
+    const { error: insError } = await supabase.from('user_movies').upsert(
+      {
+        user_id: userId,
+        tmdb_id: m.id,
+        title: m.title,
+        poster_path: m.poster_path,
+        status: 'watched',
+        watched_at: dateFor.get(m.id) ?? new Date().toISOString(),
+      },
+      { onConflict: 'user_id,tmdb_id', ignoreDuplicates: true }
+    );
+    if (insError) console.error(`  ✗ ${m.title}: ${insError.message}`);
+    else console.log(`  ✓ ajouté « ${m.title} »`);
+  }
+  console.log('\nTerminé. Relançable sans risque (idempotent).');
+} else if (finalSuspects.length || missing.length) {
   console.log('\nDry-run : rien modifié. Relance avec --fix pour appliquer.');
 }
