@@ -11,7 +11,11 @@ import {
   parseNetflixCsv,
   type NetflixEpisode,
 } from '@/lib/netflix';
-import { getSeasonDetails, type TmdbEpisode } from '@/lib/tmdb';
+import {
+  getSeasonDetails,
+  getShowDetails,
+  type TmdbEpisode,
+} from '@/lib/tmdb';
 
 interface ImportReport {
   showsMatched: number;
@@ -69,19 +73,29 @@ export default function ImportNetflixScreen() {
       // --- Séries : résoudre la série, puis chaque épisode par son titre ---
       const seasonCache = new Map<string, Map<string, number>>();
       let index = 0;
+      // Séries « inférées » rejetées (préfixe ambigu) : leurs titres bruts
+      // sont retentés en films après la boucle séries.
+      const movieQueue = [...movies];
       for (const [showName, episodes] of series) {
         index++;
         setProgress(`Séries ${index}/${series.size} — ${showName}`);
+        // Série « inférée » = uniquement des titres ambigus « A: B » regroupés
+        // (jamais de segment saison explicite chez Netflix).
+        const inferred = episodes.every((ep) => ep.seasonUnknown);
         try {
           const { match, exact } = await findShowMatch(showName);
           if (!match) {
-            result.unmatchedShows.push(showName);
+            if (inferred) {
+              for (const ep of episodes) if (ep.raw) movieQueue.push(ep.raw);
+            } else {
+              result.unmatchedShows.push(showName);
+            }
             continue;
           }
 
-          // Résoudre les épisodes AVANT d'enregistrer : si le titre TMDB ne
-          // correspond pas exactement ET qu'aucun titre d'épisode ne matche,
-          // c'est très probablement la mauvaise série → on ne pollue pas.
+          // Résoudre les épisodes AVANT d'enregistrer : sans correspondance
+          // de titre d'épisode, une série inexacte — ou inférée — est
+          // probablement la mauvaise → on ne pollue pas.
           const toMark: {
             tmdb_show_id: number;
             season_number: number;
@@ -94,15 +108,21 @@ export default function ImportNetflixScreen() {
               if (resolved.byTitle) byTitleHits++;
               toMark.push({
                 tmdb_show_id: match.id,
-                season_number: ep.season,
+                season_number: resolved.season,
                 episode_number: resolved.number,
               });
             } else {
               result.unmatchedEpisodes++;
             }
           }
-          if (!exact && byTitleHits === 0) {
-            result.unmatchedShows.push(showName);
+          if ((inferred || !exact) && byTitleHits === 0) {
+            // Pas un seul titre d'épisode reconnu : série douteuse. Les titres
+            // inférés retournent dans la file films (match exact exigé).
+            if (inferred) {
+              for (const ep of episodes) if (ep.raw) movieQueue.push(ep.raw);
+            } else {
+              result.unmatchedShows.push(showName);
+            }
             continue;
           }
 
@@ -125,9 +145,9 @@ export default function ImportNetflixScreen() {
       // --- Films : correspondance de titre VÉRIFIÉE (sinon signalé, jamais
       // lié au hasard) ; écriture idempotente (ré-import sans écrasement). ---
       let mIndex = 0;
-      for (const title of movies) {
+      for (const title of movieQueue) {
         mIndex++;
-        setProgress(`Films ${mIndex}/${movies.length} — ${title}`);
+        setProgress(`Films ${mIndex}/${movieQueue.length} — ${title}`);
         try {
           const match = await findMovieMatch(title);
           if (!match) {
@@ -155,23 +175,19 @@ export default function ImportNetflixScreen() {
     }
   }
 
-  /**
-   * Retrouve le numéro d'épisode TMDB à partir du titre Netflix.
-   * `byTitle` distingue une vraie correspondance de titre (signal fort que la
-   * série est la bonne) du simple repli « Épisode N ».
-   */
-  async function resolveEpisode(
+  /** Carte titre normalisé → numéro d'épisode d'une saison (mémoïsée). */
+  async function seasonMap(
     showId: number,
-    ep: NetflixEpisode,
+    season: number,
     cache: Map<string, Map<string, number>>
-  ): Promise<{ number: number; byTitle: boolean } | null> {
-    const key = `${showId}:${ep.season}`;
+  ): Promise<Map<string, number>> {
+    const key = `${showId}:${season}`;
     let byName = cache.get(key);
     if (!byName) {
       byName = new Map();
       try {
-        const season = await getSeasonDetails(showId, ep.season);
-        for (const episode of season.episodes as TmdbEpisode[]) {
+        const details = await getSeasonDetails(showId, season);
+        for (const episode of details.episodes as TmdbEpisode[]) {
           byName.set(normalizeTitle(episode.name), episode.episode_number);
         }
       } catch {
@@ -179,11 +195,46 @@ export default function ImportNetflixScreen() {
       }
       cache.set(key, byName);
     }
-    const byTitle = byName.get(normalizeTitle(ep.episodeTitle));
-    if (byTitle != null) return { number: byTitle, byTitle: true };
+    return byName;
+  }
+
+  /**
+   * Retrouve saison + numéro d'épisode TMDB à partir du titre Netflix.
+   * Saison inconnue (titres « Émission: Épisode ») → recherche du titre dans
+   * TOUTES les saisons. `byTitle` distingue une vraie correspondance de titre
+   * (signal fort que la série est la bonne) du simple repli « Épisode N ».
+   */
+  async function resolveEpisode(
+    showId: number,
+    ep: NetflixEpisode,
+    cache: Map<string, Map<string, number>>
+  ): Promise<{ number: number; season: number; byTitle: boolean } | null> {
+    const wanted = normalizeTitle(ep.episodeTitle);
+    if (!ep.seasonUnknown) {
+      const byName = await seasonMap(showId, ep.season, cache);
+      const found = byName.get(wanted);
+      if (found != null)
+        return { number: found, season: ep.season, byTitle: true };
+    } else {
+      // Saison inconnue : parcourir les saisons de la série (spéciaux exclus).
+      try {
+        const details = await getShowDetails(showId);
+        for (const season of details.seasons) {
+          if (season.season_number === 0) continue;
+          const byName = await seasonMap(showId, season.season_number, cache);
+          const found = byName.get(wanted);
+          if (found != null)
+            return { number: found, season: season.season_number, byTitle: true };
+        }
+      } catch {
+        // détails de série indisponibles
+      }
+    }
     // Repli : « Épisode N » dans le titre Netflix.
     const fromNumber = episodeNumberFromTitle(ep.episodeTitle);
-    return fromNumber != null ? { number: fromNumber, byTitle: false } : null;
+    return fromNumber != null
+      ? { number: fromNumber, season: ep.seasonUnknown ? 1 : ep.season, byTitle: false }
+      : null;
   }
 
   return (

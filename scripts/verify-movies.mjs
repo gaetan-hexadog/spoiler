@@ -66,10 +66,13 @@ const stripArticle = (n) =>
 const titlesMatch = (a, b) =>
   !!a && !!b && (a === b || stripArticle(a) === stripArticle(b));
 
+// Classification de l'ANCIEN import (celle qui a créé les mauvaises lignes) :
+// seuls les motifs saison/mini-série étaient reconnus comme épisodes — tout le
+// reste (y compris « Émission: Titre d'épisode ») partait en recherche FILM.
+// On rejoue exactement ça pour retrouver chaque lien fautif possible.
 const SEASON_RE = /^(.*?):\s*(?:Saison|Season|Temporada|Staffel|Volume|Partie|Part|Chapitre|Chapter|Book|Livre)\s+(\d+)\s*:\s*(.*)$/i;
 const PART_RE = /^(.*?):\s*(?:Limited Series|Miniseries|Mini-série|Miniserie)\b[^:]*:\s*(.*)$/i;
-const EPISODE_TAIL_RE = /^(.*?):\s*((?:Épisode|Episode|Chapitre|Chapter|Folge|Capítulo|Aflevering)\s+\d+.*)$/i;
-const isNetflixEpisode = (t) => SEASON_RE.test(t) || PART_RE.test(t) || EPISODE_TAIL_RE.test(t);
+const isNetflixEpisode = (t) => SEASON_RE.test(t) || PART_RE.test(t);
 
 // --- Extraction des titres de films des sources -----------------------------
 

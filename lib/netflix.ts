@@ -10,6 +10,10 @@ export interface NetflixEpisode {
   show: string;
   season: number;
   episodeTitle: string;
+  /** Saison inconnue (titre « Émission: Épisode » sans segment saison). */
+  seasonUnknown?: boolean;
+  /** Titre Netflix brut — pour retenter en FILM si la série est rejetée. */
+  raw?: string;
 }
 
 export interface NetflixParseResult {
@@ -70,10 +74,10 @@ export function parseNetflixTitle(raw: string): ParsedTitle {
   }
   const tailMatch = trimmed.match(EPISODE_TAIL_RE);
   if (tailMatch) {
+    // Pas de segment saison : saison inconnue (résolue multi-saisons à l'import).
     return {
       kind: 'episode',
       show: tailMatch[1].trim(),
-      season: 1,
       episodeTitle: tailMatch[2].trim(),
     };
   }
@@ -101,7 +105,19 @@ export function parseNetflixCsv(text: string): NetflixParseResult {
   const series = new Map<string, NetflixEpisode[]>();
   const movieSet = new Set<string>();
   const episodeSeen = new Set<string>();
+  // Titres ambigus « A: B » (un seul deux-points, pas de segment saison) :
+  // épisode d'une série sans saison OU film à sous-titre. Tranché en 2e passe.
+  const ambiguous: { show: string; tail: string; raw: string }[] = [];
   let skipped = 0;
+
+  const pushEpisode = (ep: NetflixEpisode) => {
+    const dedupe = `${ep.show.toLowerCase()}|${ep.season}|${normalizeTitle(ep.episodeTitle)}`;
+    if (episodeSeen.has(dedupe)) return;
+    episodeSeen.add(dedupe);
+    const list = series.get(ep.show) ?? [];
+    list.push(ep);
+    series.set(ep.show, list);
+  };
 
   for (const row of rows.slice(1)) {
     const title = (row[titleIndex] ?? '').trim();
@@ -111,18 +127,57 @@ export function parseNetflixCsv(text: string): NetflixParseResult {
     }
     const parsed = parseNetflixTitle(title);
     if (parsed.kind === 'episode' && parsed.show) {
-      const dedupe = `${parsed.show.toLowerCase()}|${parsed.season}|${normalizeTitle(parsed.episodeTitle ?? '')}`;
-      if (episodeSeen.has(dedupe)) continue;
-      episodeSeen.add(dedupe);
-      const list = series.get(parsed.show) ?? [];
-      list.push({
+      pushEpisode({
         show: parsed.show,
         season: parsed.season ?? 1,
         episodeTitle: parsed.episodeTitle ?? '',
+        seasonUnknown: parsed.season == null,
+        raw: title,
       });
-      series.set(parsed.show, list);
     } else if (parsed.title) {
-      movieSet.add(parsed.title);
+      const two = parsed.title.match(/^(.*?):\s*(.+)$/);
+      if (two) {
+        ambiguous.push({
+          show: two[1].trim(),
+          tail: two[2].trim(),
+          raw: parsed.title,
+        });
+      } else {
+        movieSet.add(parsed.title);
+      }
+    }
+  }
+
+  // 2e passe : un préfixe vu PLUSIEURS fois avec des suites différentes, ou
+  // déjà connu comme série, est une série (« Legends: Old Kings », « Legends:
+  // Alliance »…). Un préfixe unique reste un candidat film (« Black Mirror:
+  // Bandersnatch »). Les groupes classés série gardent leur titre brut : si la
+  // série est rejetée à la résolution TMDB, l'import retentera chaque titre en
+  // film (correspondance exacte exigée) — rien n'est lié au hasard.
+  const knownShows = new Set(
+    [...series.keys()].map((name) => normalizeTitle(name))
+  );
+  const groups = new Map<string, { show: string; tail: string; raw: string }[]>();
+  for (const entry of ambiguous) {
+    const key = normalizeTitle(entry.show);
+    const list = groups.get(key) ?? [];
+    list.push(entry);
+    groups.set(key, list);
+  }
+  for (const [key, entries] of groups) {
+    const tails = new Set(entries.map((e) => normalizeTitle(e.tail)));
+    if (knownShows.has(key) || tails.size >= 2) {
+      for (const entry of entries) {
+        pushEpisode({
+          show: entry.show,
+          season: 1,
+          episodeTitle: entry.tail,
+          seasonUnknown: true,
+          raw: entry.raw,
+        });
+      }
+    } else {
+      for (const entry of entries) movieSet.add(entry.raw);
     }
   }
 
