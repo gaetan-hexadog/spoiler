@@ -249,6 +249,8 @@ export default function ShowsScreen() {
         watched.refetch();
       }}
       tintColor={colors.accent}
+      // Le spinner descend sous le header flottant au lieu de rester caché.
+      progressViewOffset={headerH}
     />
   );
 

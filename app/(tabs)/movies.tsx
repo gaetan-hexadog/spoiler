@@ -139,6 +139,8 @@ export default function MoviesScreen() {
       refreshing={movies.isRefetching}
       onRefresh={() => movies.refetch()}
       tintColor={colors.accent}
+      // Le spinner descend sous le header flottant au lieu de rester caché.
+      progressViewOffset={headerH}
     />
   );
 
