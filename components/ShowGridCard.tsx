@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Animated, Image, Pressable, Text, View } from 'react-native';
+import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { useActionSheet } from '@/components/ActionSheet';
 import { useHoverScale } from '@/hooks/useHoverScale';
 import { useShowQuickActions } from '@/hooks/useShowQuickActions';
@@ -51,16 +52,16 @@ export function ShowGridCard({
   const { scale, onHoverIn, onHoverOut } = useHoverScale();
 
   return (
+    <Reanimated.View
+      entering={FadeIn.duration(240)}
+      style={{ flex: 1 / columns, margin: 6, marginBottom: 12 }}
+    >
     <Pressable
       onPress={() => router.push(`/show/${show.tmdb_id}`)}
       onLongPress={() => quickActions(show, upToDate ? null : next)}
       onHoverIn={onHoverIn}
       onHoverOut={onHoverOut}
-      className="m-1.5 mb-3"
-      style={({ pressed }) => [
-        { flex: 1 / columns },
-        pressed && { opacity: 0.7 },
-      ]}
+      style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
     >
       {sheet}
       <Animated.View style={{ transform: [{ scale }] }}>
@@ -113,5 +114,6 @@ export function ShowGridCard({
       </Text>
       </Animated.View>
     </Pressable>
+    </Reanimated.View>
   );
 }

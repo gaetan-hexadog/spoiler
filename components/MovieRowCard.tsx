@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
+import Reanimated, { FadeIn } from 'react-native-reanimated';
 import type { UserMovie } from '@/lib/db';
 import { imageUrl } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
@@ -18,6 +19,7 @@ export function MovieRowCard({
   const uri = imageUrl(movie.poster_path, 'w185');
 
   return (
+    <Reanimated.View entering={FadeIn.duration(240)}>
     <Pressable
       onPress={() => router.push(`/movie/${movie.tmdb_id}`)}
       onLongPress={onLongPress}
@@ -52,5 +54,6 @@ export function MovieRowCard({
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
     </Pressable>
+    </Reanimated.View>
   );
 }

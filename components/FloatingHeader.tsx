@@ -2,11 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Animated, Pressable, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/lib/theme';
-
-const AnimatedBlur = Animated.createAnimatedComponent(BlurView);
 
 /** Bouton rond translucide qui flotte au-dessus du backdrop. */
 export function FloatingButton({
@@ -63,9 +61,9 @@ export function FloatingHeader({
   return (
     <>
       {scrollY ? (
-        <AnimatedBlur
-          intensity={48}
-          tint="dark"
+        // BlurView non-wrappé (sinon l'injection backdrop-filter web casse) :
+        // on anime l'opacité du conteneur parent.
+        <Animated.View
           pointerEvents="none"
           style={{
             position: 'absolute',
@@ -73,11 +71,22 @@ export function FloatingHeader({
             left: 0,
             right: 0,
             height: insets.top + 52,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
             opacity: barOpacity,
           }}
-        />
+        >
+          <BlurView intensity={48} tint="dark" style={StyleSheet.absoluteFill} />
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          />
+        </Animated.View>
       ) : null}
       {/* Titre : apparaît en fondu avec la barre (quand on scrolle). */}
       {title && scrollY ? (

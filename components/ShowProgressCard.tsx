@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
+import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { useActionSheet } from '@/components/ActionSheet';
 import { ProgressBar } from '@/components/ui';
 import { useMarkEpisode, useShowDetails } from '@/hooks/queries';
@@ -50,6 +51,7 @@ export function ShowProgressCard({
   const uri = imageUrl(show.poster_path, 'w185');
 
   return (
+    <Reanimated.View entering={FadeIn.duration(240)}>
     <Pressable
       onPress={() => router.push(`/show/${show.tmdb_id}`)}
       onLongPress={() => quickActions(show, upToDate ? null : next)}
@@ -112,5 +114,6 @@ export function ShowProgressCard({
         </Pressable>
       ) : null}
     </Pressable>
+    </Reanimated.View>
   );
 }

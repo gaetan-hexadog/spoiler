@@ -1,20 +1,19 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ActivityIndicator, Animated, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingHeader } from '@/components/FloatingHeader';
-import { PosterCard, type LibraryBadge } from '@/components/PosterCard';
+import { PosterCard } from '@/components/PosterCard';
 import { EmptyState, Loading, Screen } from '@/components/ui';
 import {
-  useMovies,
   useNowPlayingMovies,
   useTopRatedShows,
-  useTrackedShows,
   useTrendingMovies,
   useTrendingShows,
 } from '@/hooks/queries';
 import { useGridColumns } from '@/hooks/useGridColumns';
 import { useHeaderScroll } from '@/hooks/useHeaderScroll';
+import { useLibraryBadges } from '@/hooks/useLibraryBadges';
 import { colors } from '@/lib/theme';
 
 export const BROWSE_TITLES: Record<string, string> = {
@@ -37,31 +36,7 @@ export default function BrowseScreen() {
   const topRatedShows = useTopRatedShows();
   const nowPlaying = useNowPlayingMovies();
 
-  const tracked = useTrackedShows();
-  const movies = useMovies();
-  const showBadges = useMemo(() => {
-    const map = new Map<number, LibraryBadge>();
-    for (const show of tracked.data ?? []) {
-      map.set(
-        show.tmdb_id,
-        show.status === 'completed'
-          ? 'watched'
-          : show.status === 'stopped'
-            ? 'stopped'
-            : show.status === 'planned'
-              ? 'planned'
-              : 'watching'
-      );
-    }
-    return map;
-  }, [tracked.data]);
-  const movieBadges = useMemo(() => {
-    const map = new Map<number, LibraryBadge>();
-    for (const movie of movies.data ?? []) {
-      map.set(movie.tmdb_id, movie.status === 'watched' ? 'watched' : 'planned');
-    }
-    return map;
-  }, [movies.data]);
+  const { showBadge, movieBadge } = useLibraryBadges();
 
   const isShowKind = kind === 'trending-tv' || kind === 'top-rated-tv';
   const source =
@@ -112,7 +87,7 @@ export default function BrowseScreen() {
                   posterPath={show.poster_path}
                   subtitle={show.first_air_date?.slice(0, 4)}
                   columns={columns}
-                  badge={showBadges.get(show.id)}
+                  badge={showBadge(show.id)}
                   onPress={() => router.push(`/show/${show.id}`)}
                 />
               );
@@ -124,7 +99,7 @@ export default function BrowseScreen() {
                 posterPath={movie.poster_path}
                 subtitle={movie.release_date?.slice(0, 4)}
                 columns={columns}
-                badge={movieBadges.get(movie.id)}
+                badge={movieBadge(movie.id)}
                 onPress={() => router.push(`/movie/${movie.id}`)}
               />
             );

@@ -3,10 +3,9 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Carousel } from '@/components/Carousel';
-import { PosterCard, type LibraryBadge } from '@/components/PosterCard';
+import { PosterCard } from '@/components/PosterCard';
 import { EmptyState, Input, Loading, Screen } from '@/components/ui';
 import {
-  useMovies,
   useNowPlayingMovies,
   useSearchMovies,
   useSearchShows,
@@ -16,6 +15,7 @@ import {
   useTrendingMovies,
   useTrendingShows,
 } from '@/hooks/queries';
+import { useLibraryBadges } from '@/hooks/useLibraryBadges';
 import type { TmdbMovieSummary, TmdbShowSummary } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
 
@@ -35,30 +35,7 @@ export default function DiscoverScreen() {
 
   // Badges de statut : ce que l'utilisateur a déjà dans sa bibliothèque.
   const tracked = useTrackedShows();
-  const movies = useMovies();
-  const showBadges = useMemo(() => {
-    const map = new Map<number, LibraryBadge>();
-    for (const show of tracked.data ?? []) {
-      map.set(
-        show.tmdb_id,
-        show.status === 'completed'
-          ? 'watched'
-          : show.status === 'stopped'
-            ? 'stopped'
-            : show.status === 'planned'
-              ? 'planned'
-              : 'watching'
-      );
-    }
-    return map;
-  }, [tracked.data]);
-  const movieBadges = useMemo(() => {
-    const map = new Map<number, LibraryBadge>();
-    for (const movie of movies.data ?? []) {
-      map.set(movie.tmdb_id, movie.status === 'watched' ? 'watched' : 'planned');
-    }
-    return map;
-  }, [movies.data]);
+  const { showBadge, movieBadge } = useLibraryBadges();
   const seedShow = useMemo(
     () => (tracked.data ?? []).find((show) => show.status === 'watching'),
     [tracked.data]
@@ -74,7 +51,7 @@ export default function DiscoverScreen() {
       posterPath={item.poster_path}
       subtitle={item.first_air_date?.slice(0, 4)}
       width={CAROUSEL_WIDTH}
-      badge={showBadges.get(item.id)}
+      badge={showBadge(item.id)}
       onPress={() => router.push(`/show/${item.id}`)}
     />
   );
@@ -84,7 +61,7 @@ export default function DiscoverScreen() {
       posterPath={item.poster_path}
       subtitle={item.release_date?.slice(0, 4)}
       width={CAROUSEL_WIDTH}
-      badge={movieBadges.get(item.id)}
+      badge={movieBadge(item.id)}
       onPress={() => router.push(`/movie/${item.id}`)}
     />
   );

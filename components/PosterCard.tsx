@@ -1,5 +1,6 @@
 import React from 'react';
 import { Animated, Image, Pressable, Text, View } from 'react-native';
+import Reanimated, { FadeIn } from 'react-native-reanimated';
 import { useHoverScale } from '@/hooks/useHoverScale';
 import { imageUrl } from '@/lib/tmdb';
 
@@ -45,16 +46,19 @@ export function PosterCard({
   const { scale, onHoverIn, onHoverOut } = useHoverScale();
   const badgeStyle = badge ? BADGE_STYLE[badge] : null;
   return (
+    <Reanimated.View
+      entering={FadeIn.duration(240)}
+      style={[
+        { margin: 6, marginBottom: 12 },
+        width ? { width } : { flex: 1 / columns },
+      ]}
+    >
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       onHoverIn={onHoverIn}
       onHoverOut={onHoverOut}
-      className="m-1.5 mb-3"
-      style={({ pressed }) => [
-        width ? { width } : { flex: 1 / columns },
-        pressed && { opacity: 0.7 },
-      ]}
+      style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
       <View className="aspect-[2/3] rounded-xl bg-surface overflow-hidden">
@@ -99,5 +103,6 @@ export function PosterCard({
       ) : null}
       </Animated.View>
     </Pressable>
+    </Reanimated.View>
   );
 }
