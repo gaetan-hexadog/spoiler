@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Animated, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/lib/theme';
+
+const AnimatedBlur = Animated.createAnimatedComponent(BlurView);
 
 /** Bouton rond translucide qui flotte au-dessus du backdrop. */
 export function FloatingButton({
@@ -58,7 +61,9 @@ export function FloatingHeader({
   return (
     <>
       {scrollY ? (
-        <Animated.View
+        <AnimatedBlur
+          intensity={48}
+          tint="dark"
           pointerEvents="none"
           style={{
             position: 'absolute',
@@ -66,12 +71,9 @@ export function FloatingHeader({
             left: 0,
             right: 0,
             height: insets.top + 52,
-            backgroundColor: 'rgba(13,19,33,0.72)',
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
             opacity: barOpacity,
-            // Web : vrai flou derrière la barre (no-op natif sans expo-blur).
-            ...({ backdropFilter: 'blur(14px)' } as object),
           }}
         />
       ) : null}
