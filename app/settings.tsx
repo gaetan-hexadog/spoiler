@@ -353,6 +353,22 @@ export default function SettingsScreen() {
       <GroupLabel>DONNÉES & IMPORT</GroupLabel>
       <View className="bg-surface rounded-2xl overflow-hidden">
         <Row
+          icon="server"
+          label="Connecter Plex / Jellyfin"
+          sublabel="Scrobbling par webhook"
+          onPress={() => router.push('/connect-server')}
+          right={
+            !isPro ? (
+              <View className="bg-accent rounded-full px-2 py-0.5">
+                <Text className="text-accent-fg text-[9px] font-extrabold">
+                  PRO
+                </Text>
+              </View>
+            ) : undefined
+          }
+          divider
+        />
+        <Row
           icon="tv"
           label="Associer un appareil Kodi"
           sublabel="Scrobbling automatique"

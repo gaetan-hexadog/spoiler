@@ -33,9 +33,9 @@ const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: stri
     sub: 'Tes prochaines diffusions dans ton agenda (.ics).',
   },
   {
-    icon: 'tv',
-    title: 'Scrobbling Kodi',
-    sub: 'Associe Kodi : tout ce que tu y regardes est marqué vu ici.',
+    icon: 'server',
+    title: 'Scrobbling Plex · Jellyfin · Kodi',
+    sub: 'Tout ce que tu termines sur ton serveur média est marqué vu ici.',
   },
   {
     icon: 'cloud-upload',
