@@ -420,7 +420,7 @@ export default function SettingsScreen() {
           paddingTop: headerH + 8,
           paddingBottom: 16,
           width: '100%',
-          maxWidth: isDesktop ? 800 : 720,
+          maxWidth: isDesktop ? undefined : 720,
           alignSelf: 'center',
         }}
       >

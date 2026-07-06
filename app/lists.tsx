@@ -5,6 +5,7 @@ import { FlatList, Image, Pressable, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/BottomSheet';
 import { EmptyState, Input, Screen } from '@/components/ui';
 import { useAllListItems, useCreateList, useLists } from '@/hooks/queries';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { usePro } from '@/hooks/usePro';
 import { imageUrl } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
@@ -17,6 +18,8 @@ import { colors } from '@/lib/theme';
 export default function ListsScreen() {
   const router = useRouter();
   const { isPro } = usePro();
+  const bp = useBreakpoint();
+  const listColumns = bp === 'desktop' ? 3 : bp === 'tablet' ? 2 : 1;
   const lists = useLists();
   const items = useAllListItems();
   const createList = useCreateList();
@@ -101,15 +104,12 @@ export default function ListsScreen() {
         />
       ) : (
         <FlatList
+          key={`lists-${listColumns}`}
           data={lists.data ?? []}
+          numColumns={listColumns}
+          columnWrapperStyle={listColumns > 1 ? { gap: 12 } : undefined}
           keyExtractor={(list) => String(list.id)}
-          contentContainerStyle={{
-            padding: 16,
-            gap: 12,
-            width: '100%',
-            maxWidth: 720,
-            alignSelf: 'center',
-          }}
+          contentContainerStyle={{ padding: 16, gap: 12 }}
           renderItem={({ item: list }) => {
             const listItems = byList.get(list.id) ?? [];
             const posters = listItems.slice(0, 4);
@@ -117,7 +117,10 @@ export default function ListsScreen() {
               <Pressable
                 onPress={() => router.push(`/list/${list.id}`)}
                 className="bg-surface rounded-2xl p-3.5 flex-row items-center gap-3.5"
-                style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
+                style={({ pressed }) => [
+                  { flex: 1 / listColumns },
+                  pressed ? { opacity: 0.85 } : undefined,
+                ]}
               >
                 {/* Mini-collage des dernières affiches */}
                 <View className="flex-row">

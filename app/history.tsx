@@ -139,7 +139,7 @@ export default function HistoryScreen() {
         contentContainerStyle={{
           paddingBottom: 32,
           width: '100%',
-          maxWidth: 760,
+          maxWidth: isDesktop ? 1000 : 760,
           alignSelf: 'center',
         }}
         initialNumToRender={20}

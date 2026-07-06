@@ -44,8 +44,8 @@ const BENEFITS: { icon: keyof typeof Ionicons.glyphMap; title: string; sub: stri
   },
   {
     icon: 'color-palette',
-    title: 'Thèmes & icônes',
-    sub: 'Personnalise l’apparence et l’icône de l’app.',
+    title: 'Thèmes de couleur',
+    sub: 'Personnalise la couleur d’accent de toute l’app.',
   },
   {
     icon: 'sparkles',

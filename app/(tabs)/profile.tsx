@@ -232,37 +232,27 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const topSeries = stats.topShows.length ? (
-    <View className="gap-2">
-      <Text className="text-fg text-lg font-bold">Top séries</Text>
-      {stats.topShows.map((entry, index) => {
-        const uri = imageUrl(entry.show?.poster_path, 'w92');
-        return (
-          <Pressable
-            key={entry.tmdbId}
-            onPress={() => router.push(`/show/${entry.tmdbId}`)}
-            className="flex-row items-center gap-3 bg-surface rounded-xl p-2"
-            style={({ pressed }) => (pressed ? { opacity: 0.8 } : undefined)}
-          >
-            <Text className="text-accent text-base font-extrabold w-6 text-center">
-              {index + 1}
-            </Text>
-            {uri ? (
-              <Image source={{ uri }} className="w-8 aspect-[2/3] rounded" />
-            ) : (
-              <View className="w-8 aspect-[2/3] rounded bg-surface-light" />
-            )}
-            <Text
-              className="text-fg text-sm font-semibold flex-1"
-              numberOfLines={1}
-            >
-              {entry.show?.name}
-            </Text>
-            <Text className="text-muted text-xs">{entry.count} ép.</Text>
-          </Pressable>
-        );
-      })}
-    </View>
+  // Carte « ta série culte » (comme dans le lab), cliquable vers la fiche.
+  const culte = stats.topShows[0];
+  const culteShow = culte ? (
+    <Pressable
+      onPress={() => router.push(`/show/${culte.tmdbId}`)}
+      className="rounded-2xl bg-surface p-4 flex-row items-center gap-3"
+      style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
+    >
+      <View className="w-11 h-11 rounded-xl bg-accent items-center justify-center">
+        <Ionicons name="trophy" size={22} color={colors.accentText} />
+      </View>
+      <View className="flex-1">
+        <Text className="text-muted text-[11px]">Ta série culte</Text>
+        <Text className="text-fg text-[15px] font-bold" numberOfLines={1}>
+          {culte.show?.name}
+        </Text>
+      </View>
+      <Text className="text-accent text-sm font-extrabold">
+        {culte.count} ép.
+      </Text>
+    </Pressable>
   ) : null;
 
   const footer = (
@@ -287,10 +277,7 @@ export default function ProfileScreen() {
     <View className="flex-1 bg-bg">
       {/* Colonne centrée sur desktop : le hero et la ⚙️ y sont ancrés
           ensemble (sinon la ⚙️, collée au viewport, se détache à droite). */}
-      <View
-        className="flex-1 w-full self-center"
-        style={{ maxWidth: isDesktop ? 720 : undefined }}
-      >
+      <View className="flex-1 w-full">
         {/* ⚙️ Réglages : flotte en haut à droite, sur le hero. */}
         <View className="absolute right-3 z-10" style={{ top: insets.top + 4 }}>
           <FloatingButton
@@ -301,7 +288,7 @@ export default function ProfileScreen() {
 
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         {/* HERO cinéma : backdrop flou + identité posée dessus. */}
-        <View style={{ height: 250 }}>
+        <View style={{ height: isDesktop ? 300 : 250 }}>
           {heroUri ? (
             <Image
               source={{ uri: heroUri }}
@@ -337,159 +324,33 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View className="px-4 gap-3 -mt-2">
-          {/* Pièce maîtresse : temps devant l'écran. */}
-          <View className="rounded-3xl overflow-hidden">
-            <LinearGradient
-              colors={['#2a2418', '#1A2235']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ padding: 20 }}
-            >
-              <Text className="text-muted text-[11px] font-bold tracking-[2px]">
-                DEVANT L'ÉCRAN
-              </Text>
-              <View className="flex-row items-end gap-1 mt-1">
-                <Text className="text-accent text-[46px] font-extrabold leading-[48px]">
-                  {stats.days}
-                </Text>
-                <Text className="text-accent text-2xl font-extrabold mb-2">
-                  j
-                </Text>
-                <Text className="text-fg text-[46px] font-extrabold leading-[48px] ml-2">
-                  {stats.hours}
-                </Text>
-                <Text className="text-fg text-2xl font-extrabold mb-2">h</Text>
+        {isDesktop ? (
+          // Desktop : tableau de bord 2 colonnes qui remplit la largeur.
+          <View className="px-6 -mt-3 gap-6">
+            <View className="flex-row gap-6 items-start">
+              <View className="flex-[1.3] gap-4">
+                {devantEcran}
+                {activity}
               </View>
-              {stats.months > 0 ? (
-                <Text className="text-muted text-[12px] mt-1">
-                  soit ~{stats.months} mois de ta vie ✦
-                </Text>
-              ) : null}
-            </LinearGradient>
-          </View>
-
-          {/* Trois tuiles vitrées. */}
-          <View className="flex-row gap-3">
-            {[
-              { v: stats.shows, l: 'Séries' },
-              { v: stats.episodes.toLocaleString('fr'), l: 'Épisodes' },
-              { v: stats.moviesWatched.toLocaleString('fr'), l: 'Films' },
-            ].map((s) => (
-              <View
-                key={s.l}
-                className="flex-1 rounded-2xl p-3.5 items-center"
-                style={{
-                  backgroundColor: 'rgba(36,47,73,0.6)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.05)',
-                }}
-              >
-                <Text className="text-fg text-lg font-extrabold">{s.v}</Text>
-                <Text className="text-muted text-[10.5px] mt-0.5">{s.l}</Text>
+              <View className="flex-1 gap-4">
+                {tiles}
+                {shortcuts}
+                {culteShow}
               </View>
-            ))}
-          </View>
-
-          {/* Activité de l'année en barres. */}
-          <View className="bg-surface rounded-2xl p-4 gap-2.5">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-fg text-[14px] font-bold">
-                Activité {stats.year}
-              </Text>
-              <Text className="text-muted text-[11px]">
-                {stats.yearTotal} épisodes
-              </Text>
             </View>
-            <View className="flex-row items-end gap-[3px] h-16">
-              {stats.bars.map((n, i) => (
-                <View
-                  key={i}
-                  className="flex-1 rounded-t-sm"
-                  style={{
-                    height: `${Math.max(4, (n / maxBar) * 100)}%`,
-                    backgroundColor:
-                      i === stats.bars.length - 1 ? colors.accent : '#2f3d5c',
-                  }}
-                />
-              ))}
-            </View>
+            {footer}
           </View>
-
-          {/* Raccourcis Pro. */}
-          <View className="flex-row gap-3">
-            <Shortcut
-              icon="albums"
-              label="Mes listes"
-              sub="Collections"
-              onPress={() => router.push('/lists')}
-            />
-            <Shortcut
-              icon="stats-chart"
-              label="Mon bilan"
-              sub="Stats par année"
-              onPress={() => router.push('/stats')}
-            />
+        ) : (
+          // Mobile : colonne unique.
+          <View className="px-4 gap-3 -mt-2">
+            {devantEcran}
+            {tiles}
+            {activity}
+            {shortcuts}
+            {culteShow}
+            {footer}
           </View>
-
-          {/* Top séries. */}
-          {stats.topShows.length ? (
-            <View className="gap-2 mt-1">
-              <Text className="text-fg text-lg font-bold">Top séries</Text>
-              {stats.topShows.map((entry, index) => {
-                const uri = imageUrl(entry.show?.poster_path, 'w92');
-                return (
-                  <Pressable
-                    key={entry.tmdbId}
-                    onPress={() => router.push(`/show/${entry.tmdbId}`)}
-                    className="flex-row items-center gap-3 bg-surface rounded-xl p-2"
-                    style={({ pressed }) =>
-                      pressed ? { opacity: 0.8 } : undefined
-                    }
-                  >
-                    <Text className="text-accent text-base font-extrabold w-6 text-center">
-                      {index + 1}
-                    </Text>
-                    {uri ? (
-                      <Image
-                        source={{ uri }}
-                        className="w-8 aspect-[2/3] rounded"
-                      />
-                    ) : (
-                      <View className="w-8 aspect-[2/3] rounded bg-surface-light" />
-                    )}
-                    <Text
-                      className="text-fg text-sm font-semibold flex-1"
-                      numberOfLines={1}
-                    >
-                      {entry.show?.name}
-                    </Text>
-                    <Text className="text-muted text-xs">{entry.count} ép.</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : null}
-
-          {/* Pied de page : logo + version + attribution. */}
-          <View className="items-center gap-2 mt-6 mb-2">
-            <Image
-              source={require('../../assets/logo.png')}
-              style={{ width: 32, height: 32, opacity: 0.9 }}
-              resizeMode="contain"
-            />
-            <View style={{ maxWidth: 320 }}>
-              <Muted size="xs">
-                PopcornLog v{Constants.expoConfig?.version ?? '1.0.0'}
-                {Updates.updateId
-                  ? ` · maj ${Updates.updateId.slice(0, 8)}`
-                  : ''}
-                {'\n'}Temps d'écran estimé (42 min/épisode, 1 h 50/film).
-                Données TMDB — application non approuvée par TMDB.
-              </Muted>
-            </View>
-          </View>
-        </View>
+        )}
         </ScrollView>
       </View>
     </View>

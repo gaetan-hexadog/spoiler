@@ -21,7 +21,7 @@ export function Screen({
   // pleine largeur sur téléphone.
   return (
     <View className={`flex-1 bg-bg ${className ?? ''}`}>
-      <View className="flex-1 w-full max-w-[1200px] self-center">
+      <View className="flex-1 w-full self-center">
         {children}
       </View>
     </View>

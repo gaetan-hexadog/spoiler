@@ -9,6 +9,7 @@ import {
   useMovies,
   useTrackedShows,
 } from '@/hooks/queries';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { usePro } from '@/hooks/usePro';
 import { imageUrl } from '@/lib/tmdb';
 import { colors } from '@/lib/theme';
@@ -60,6 +61,7 @@ function Card({
 export default function StatsScreen() {
   const router = useRouter();
   const { isPro } = usePro();
+  const isDesktop = useBreakpoint() === 'desktop';
   const shows = useTrackedShows();
   const watched = useAllWatchedEpisodes();
   const movies = useMovies();
@@ -190,7 +192,7 @@ export default function StatsScreen() {
           paddingBottom: 40,
           gap: 16,
           width: '100%',
-          maxWidth: 720,
+          maxWidth: isDesktop ? 1100 : 720,
           alignSelf: 'center',
         }}
       >
@@ -272,9 +274,10 @@ export default function StatsScreen() {
 
         <ActivityHeatmap allWatched={watched.data ?? []} year={activeYear} />
 
-        {/* Top séries de l'année */}
+        {/* Top de l'année : deux colonnes côte à côte sur desktop. */}
+        <View className={isDesktop ? 'flex-row gap-6 items-start' : 'gap-4'}>
         {stats.topShows.length ? (
-          <View className="gap-2">
+          <View className="gap-2 flex-1">
             <Text className="text-fg text-lg font-bold">
               Top séries {activeYear}
             </Text>
@@ -310,7 +313,7 @@ export default function StatsScreen() {
 
         {/* Top films de l'année */}
         {stats.topMovies.length ? (
-          <View className="gap-2">
+          <View className="gap-2 flex-1">
             <Text className="text-fg text-lg font-bold">
               Top films {activeYear}
             </Text>
@@ -347,6 +350,7 @@ export default function StatsScreen() {
             })}
           </View>
         ) : null}
+        </View>
       </ScrollView>
     </Screen>
   );
