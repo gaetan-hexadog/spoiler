@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useActionSheet } from '@/components/ActionSheet';
 import { FrostedHeader } from '@/components/FrostedHeader';
 import { Screen } from '@/components/ui';
@@ -214,13 +215,6 @@ export default function SettingsScreen() {
       ],
     });
 
-  const editProfileSoon = () =>
-    openSheet({
-      title: 'Bientôt',
-      message: 'La modification du profil arrive dans une prochaine version.',
-      actions: [{ label: 'OK', onPress: () => {} }],
-    });
-
   const notifSwitch = (
     <Switch
       value={notifEnabled}
@@ -228,29 +222,6 @@ export default function SettingsScreen() {
       trackColor={{ false: colors.surfaceLight, true: colors.accent }}
       thumbColor={colors.bg}
     />
-  );
-
-  const accountCard = (
-    <Pressable
-      className="bg-surface rounded-[18px] p-[18px] flex-row items-center gap-4"
-      onPress={editProfileSoon}
-      style={({ pressed }) => (pressed ? { opacity: 0.85 } : undefined)}
-    >
-      <View className="w-14 h-14 rounded-full bg-accent items-center justify-center">
-        <Text className="text-accent-fg text-2xl font-extrabold">{initial}</Text>
-      </View>
-      <View className="flex-1">
-        <Text className="text-fg text-[17px] font-extrabold" numberOfLines={1}>
-          {displayName}
-        </Text>
-        <Text className="text-muted text-[12.5px]" numberOfLines={1}>
-          {email}
-        </Text>
-      </View>
-      <View className="bg-surface-light rounded-[10px] px-3.5 py-2">
-        <Text className="text-fg text-[12.5px] font-extrabold">Modifier</Text>
-      </View>
-    </Pressable>
   );
 
   const generalGroup = (
@@ -348,42 +319,40 @@ export default function SettingsScreen() {
     </View>
   );
 
-  const dataGroup = (
+  const proBadge = !isPro ? (
+    <View className="bg-accent rounded-full px-2 py-0.5">
+      <Text className="text-accent-fg text-[9px] font-extrabold">PRO</Text>
+    </View>
+  ) : undefined;
+
+  // Les 3 scrobblings regroupés (ils n'ont rien à faire dans « Import »).
+  const connexionsGroup = (
     <View>
-      <GroupLabel>DONNÉES & IMPORT</GroupLabel>
+      <GroupLabel>CONNEXIONS</GroupLabel>
       <View className="bg-surface rounded-2xl overflow-hidden">
         <Row
           icon="server"
-          label="Connecter Plex / Jellyfin"
+          label="Plex / Jellyfin"
           sublabel="Scrobbling par webhook"
           onPress={() => router.push('/connect-server')}
-          right={
-            !isPro ? (
-              <View className="bg-accent rounded-full px-2 py-0.5">
-                <Text className="text-accent-fg text-[9px] font-extrabold">
-                  PRO
-                </Text>
-              </View>
-            ) : undefined
-          }
+          right={proBadge}
           divider
         />
         <Row
           icon="tv"
-          label="Associer un appareil Kodi"
+          label="Appareil Kodi"
           sublabel="Scrobbling automatique"
           onPress={() => router.push('/pair')}
-          right={
-            !isPro ? (
-              <View className="bg-accent rounded-full px-2 py-0.5">
-                <Text className="text-accent-fg text-[9px] font-extrabold">
-                  PRO
-                </Text>
-              </View>
-            ) : undefined
-          }
-          divider
+          right={proBadge}
         />
+      </View>
+    </View>
+  );
+
+  const dataGroup = (
+    <View>
+      <GroupLabel>DONNÉES & IMPORT</GroupLabel>
+      <View className="bg-surface rounded-2xl overflow-hidden">
         <Row
           icon="download"
           label="Importer depuis TV Time"
@@ -404,15 +373,7 @@ export default function SettingsScreen() {
             backingUp ? 'Préparation…' : 'Export JSON — vers Drive, Files…'
           }
           onPress={backupData}
-          right={
-            !isPro ? (
-              <View className="bg-accent rounded-full px-2 py-0.5">
-                <Text className="text-accent-fg text-[9px] font-extrabold">
-                  PRO
-                </Text>
-              </View>
-            ) : undefined
-          }
+          right={proBadge}
         />
       </View>
     </View>
@@ -463,46 +424,59 @@ export default function SettingsScreen() {
           alignSelf: 'center',
         }}
       >
-        {accountCard}
-
+        {/* Bannière Pro héroïque (dégradé) — ancre visuelle de l'écran. */}
         <Pressable
           onPress={() => router.push('/pro')}
-          className="mt-3 rounded-[18px] p-[16px] flex-row items-center gap-3.5"
-          style={({ pressed }) => [
-            { backgroundColor: 'rgba(255,212,73,0.10)', borderWidth: 1, borderColor: 'rgba(255,212,73,0.35)' },
-            pressed ? { opacity: 0.85 } : undefined,
-          ]}
+          className="mt-2 rounded-[18px] overflow-hidden"
+          style={({ pressed }) => (pressed ? { opacity: 0.9 } : undefined)}
         >
-          <View className="w-11 h-11 rounded-2xl bg-accent items-center justify-center">
-            <Ionicons name="star" size={22} color={colors.accentText} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-fg text-[15px] font-extrabold">
-              {isPro ? 'PopcornLog Pro' : 'Passer à Pro'}
-            </Text>
-            <Text className="text-muted text-[12px] mt-0.5">
-              {isPro
-                ? 'Abonnement actif — merci ✨'
-                : 'Suivi illimité, stats avancées, bandes-annonces…'}
-            </Text>
-          </View>
-          {isPro ? (
-            <View className="bg-accent rounded-full px-2.5 py-1">
-              <Text className="text-accent-fg text-[11px] font-extrabold">PRO</Text>
+          <LinearGradient
+            colors={
+              isPro ? ['#3a3216', '#1A2235'] : ['#2f2a14', '#1A2235']
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ padding: 16 }}
+          >
+            <View className="flex-row items-center gap-3.5">
+              <View className="w-11 h-11 rounded-2xl bg-accent items-center justify-center">
+                <Ionicons name="star" size={22} color={colors.accentText} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-fg text-[15px] font-extrabold">
+                  {isPro ? 'PopcornLog Pro' : 'Passer à Pro'}
+                </Text>
+                <Text className="text-muted text-[12px] mt-0.5">
+                  {isPro
+                    ? 'Abonnement actif — merci ✦'
+                    : 'Suivi illimité, stats avancées, bandes-annonces…'}
+                </Text>
+              </View>
+              {isPro ? (
+                <View className="bg-accent rounded-full px-2.5 py-1">
+                  <Text className="text-accent-fg text-[11px] font-extrabold">
+                    PRO
+                  </Text>
+                </View>
+              ) : (
+                <Ionicons name="chevron-forward" size={18} color={colors.accent} />
+              )}
             </View>
-          ) : (
-            <Ionicons name="chevron-forward" size={18} color={colors.accent} />
-          )}
+          </LinearGradient>
         </Pressable>
 
         {isDesktop ? (
           <View className="flex-row gap-5 mt-1 items-start">
-            <View className="flex-1">{generalGroup}</View>
+            <View className="flex-1">
+              {generalGroup}
+              {connexionsGroup}
+            </View>
             <View className="flex-1">{dataGroup}</View>
           </View>
         ) : (
           <>
             {generalGroup}
+            {connexionsGroup}
             {dataGroup}
           </>
         )}
