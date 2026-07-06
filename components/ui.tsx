@@ -34,8 +34,28 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Muted({ children }: { children: React.ReactNode }) {
-  return <Text className="text-muted text-sm text-center">{children}</Text>;
+const MUTED_SIZES = {
+  xs: 'text-xs',
+  sm: 'text-sm',
+  base: 'text-base',
+} as const;
+
+export function Muted({
+  children,
+  size = 'sm',
+  className,
+}: {
+  children: React.ReactNode;
+  size?: keyof typeof MUTED_SIZES;
+  className?: string;
+}) {
+  return (
+    <Text
+      className={`text-muted ${MUTED_SIZES[size]} text-center ${className ?? ''}`}
+    >
+      {children}
+    </Text>
+  );
 }
 
 const BUTTON_VARIANTS = {
